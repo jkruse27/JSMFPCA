@@ -1,0 +1,215 @@
+"""
+Prior distribution of Fourier coefficients induced by the
+cross-spectral decomposition.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from .spectral import SpectralModel
+import numpy as np
+
+
+# ---------------------------------------------------------------------
+# One retained harmonic
+# ---------------------------------------------------------------------
+
+@dataclass(slots=True)
+class HarmonicComponent:
+    """
+    Retained spectral component for one harmonic.
+
+    Parameters
+    ----------
+    harmonic
+        Harmonic number (1..R).
+
+    eigenvectors
+        (K,K')
+
+    eigenvalues
+        (K',)
+    """
+
+    harmonic: int
+
+    eigenvectors: np.ndarray
+    eigenvalues: np.ndarray
+
+    @property
+    def n_modes(self):
+        return self.eigenvectors.shape[0]
+
+    @property
+    def n_components(self):
+        return self.eigenvectors.shape[1]
+
+    @property
+    def covariance(self):
+        return (
+            self.eigenvectors
+            @ np.diag(self.eigenvalues)
+            @ self.eigenvectors.T
+        )
+
+    @property
+    def precision(self):
+        return (
+            self.eigenvectors
+            @ np.diag(1.0 / self.eigenvalues)
+            @ self.eigenvectors.T
+        )
+
+
+# ---------------------------------------------------------------------
+# Complete prior
+# ---------------------------------------------------------------------
+
+@dataclass(slots=True)
+class SpectralPrior:
+    cross_quadrature_covariance: np.ndarray | None = None
+    components: list[HarmonicComponent] = field(
+        default_factory=list
+    )
+
+    ridge: float = 1e-8
+
+    @property
+    def n_harmonics(self):
+        return len(self.components)
+
+    @property
+    def n_modes(self):
+
+        if not self.components:
+            return 0
+
+        return self.components[0].n_modes
+
+    @property
+    def n_basis(self):
+        return 2 * self.n_harmonics
+
+    # ---------------------------------------------------------
+
+    def covariance(self):
+        """
+        Covariance of vec(B).
+
+        Returns
+        -------
+        Sigma_B
+            ((2RK),(2RK))
+        """
+
+        blocks = []
+
+        for component in self.components:
+
+            Sigma = component.covariance
+
+            blocks.append(Sigma)
+            blocks.append(Sigma)
+
+        return self._block_diag(blocks)
+
+    # ---------------------------------------------------------
+
+    def precision(self):
+
+        blocks = []
+
+        for component in self.components:
+
+            P = component.precision
+
+            blocks.append(P)
+            blocks.append(P)
+
+        return self._block_diag(blocks)
+
+    # ---------------------------------------------------------
+
+    def variances(self):
+
+        return {
+            component.harmonic: component.eigenvalues.copy()
+            for component in self.components
+        }
+
+    # ---------------------------------------------------------
+
+    def sample(
+        self,
+        random_state=None,
+    ):
+
+        rng = np.random.default_rng(random_state)
+
+        Sigma = self.covariance()
+
+        z = rng.multivariate_normal(
+            np.zeros(Sigma.shape[0]),
+            Sigma,
+        )
+
+        return z.reshape(
+            self.n_basis,
+            self.n_modes,
+            order="F",
+        )
+
+    # ---------------------------------------------------------
+
+    @staticmethod
+    def _block_diag(blocks):
+
+        if len(blocks) == 0:
+            return np.empty((0, 0))
+
+        sizes = [b.shape[0] for b in blocks]
+
+        n = sum(sizes)
+
+        out = np.zeros((n, n))
+
+        i = 0
+
+        for block in blocks:
+
+            m = block.shape[0]
+
+            out[i:i + m, i:i + m] = block
+
+            i += m
+
+        return out
+
+
+class PriorBuilder:
+
+    def build(
+        self,
+        model: SpectralModel,
+    ) -> SpectralPrior:
+
+        components = []
+
+        for harmonic, spectrum in enumerate(
+            model.spectra,
+            start=1,
+        ):
+
+            keep = model.n_components[harmonic - 1]
+
+            components.append(
+                HarmonicComponent(
+                    harmonic=harmonic,
+                    eigenvectors=spectrum.eigenvectors[:, :keep],
+                    eigenvalues=spectrum.eigenvalues[:keep],
+                )
+            )
+
+        return SpectralPrior(
+            components=components
+        )

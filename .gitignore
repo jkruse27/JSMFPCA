@@ -1,0 +1,9 @@
+*.swp
+*.keras
+*/__pycache__*
+*/bootstrap*
+*/models*
+*checkpoints*
+*Zone.Identifier*
+*myenv*
+*.csv
