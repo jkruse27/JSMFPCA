@@ -1,21 +1,4 @@
-"""
-spectral/covariance.py
-
-Covariance estimation for Stage 2.
-
-Implements
-
-    Σ(d)
-
-and
-
-    S_r
-
-from the circadian residuals.
-"""
-
 from __future__ import annotations
-
 import numpy as np
 
 
@@ -24,26 +7,6 @@ import numpy as np
 # ---------------------------------------------------------------------
 
 def estimate_lag_covariance(dataset, weighting="subject"):
-    """
-    Estimate the lag covariance matrices Σ(d).
-
-    Parameters
-    ----------
-    dataset : CircadianDataset
-
-    weighting : {"subject", "pair"}
-        "subject"
-            Every subject contributes equally (recommended).
-
-        "pair"
-            Every observed hour pair contributes equally.
-
-    Returns
-    -------
-    Sigma : ndarray
-        Shape (24, K, K)
-    """
-
     K = dataset.n_components
     Sigma = np.zeros((24, K, K))
 
@@ -100,14 +63,9 @@ def estimate_lag_covariance(dataset, weighting="subject"):
 # ---------------------------------------------------------------------
 
 def lag_counts(dataset):
-    """
-    Number of observed pairs at each lag.
-    """
-
     counts = np.zeros(24, dtype=int)
 
     for lag in range(24):
-
         for _ in dataset.observed_pairs(lag):
             counts[lag] += 1
 
@@ -119,16 +77,4 @@ def lag_counts(dataset):
 # ---------------------------------------------------------------------
 
 def make_hermitian(S):
-    """
-    Numerical symmetrization.
-
-    Floating-point error may produce
-
-        S != Sᴴ
-
-    by ~1e-14.
-    """
-
-    return 0.5 * (
-        S + S.conj().T
-    )
+    return 0.5 * (S + S.conj().T)

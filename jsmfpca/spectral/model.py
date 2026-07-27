@@ -1,53 +1,18 @@
-"""
-spectral/model.py
-
-Stage 2 of the JS-MFPCA pipeline.
-
-Estimate
-
-    Σ(d)
-        ↓
-    S_r
-        ↓
-    shrinkage
-        ↓
-    eigendecomposition
-
-The resulting eigenvectors define the coordinated circadian
-rhythm components.
-"""
-
 from __future__ import annotations
-
 import numpy as np
-
 from circadian.data import CircadianDataset
-
 from .covariance import estimate_lag_covariance
-from .shrinkage import (
-    shrink_all,
-    decompose_all,
-)
-from .coefficient_estimator import (
-    OLSCoefficientEstimator,
-)
+from .shrinkage import shrink_all, decompose_all
+from .coefficient_estimator import OLSCoefficientEstimator
 from .data import SpectralDataset, SpectralSubject
 
 
 class SpectralModel:
-    def __init__(
-        self,
-        shrinkage=0.25,
-        weighting="subject",
-        estimator=None
-    ):
-
+    def __init__(self, shrinkage=0.25, weighting="subject", estimator=None):
         self.estimator = estimator or OLSCoefficientEstimator()
         self.shrinkage = shrinkage
-        self.weighting = weighting
-
+        self.weight = weighting
         self._is_fitted = False
-
         self._fourier = self._build_fourier_matrix()
 
     # ------------------------------------------------------------
@@ -55,42 +20,20 @@ class SpectralModel:
     # ------------------------------------------------------------
 
     def fit(self, dataset: CircadianDataset):
-
         self.n_components_ = dataset.n_components
-
-        self.Sigma_ = estimate_lag_covariance(
-            dataset,
-            weighting=self.weighting,
-        )
-
-        self.cross_spectra_ = self._compute_cross_spectra(
-            self.Sigma_
-        )
-
-        self.shrunk_spectra_ = shrink_all(
-            self.cross_spectra_,
-            self.shrinkage,
-        )
-
-        (
-            self.eigenvalues_,
-            self.eigenvectors_,
-        ) = decompose_all(
-            self.shrunk_spectra_
-        )
-
+        self.Sigma_ = estimate_lag_covariance(dataset, weighting=self.weight)
+        self.cross_spectra_ = self._compute_cross_spectra(self.Sigma_)
+        self.shrunk_spectra_ = shrink_all(self.cross_spectra_, self.shrinkage)
+        self.eigenvalues_, self.eigenvectors_ = decompose_all(
+                                                        self.shrunk_spectra_
+                                                    )
         self._is_fitted = True
 
         return self
 
-    # ------------------------------------------------------------
-
     def _check_fitted(self):
-
         if not self._is_fitted:
-            raise RuntimeError(
-                "SpectralModel has not been fitted."
-            )
+            raise RuntimeError("SpectralModel has not been fitted.")
 
     # ------------------------------------------------------------
     # Fourier matrix
@@ -98,69 +41,27 @@ class SpectralModel:
 
     @staticmethod
     def _build_fourier_matrix():
-        """
-        Matrix
-
-            F[r,d] = exp(-2πird/24)
-
-        Shape
-
-            (13,24)
-        """
-
         r = np.arange(13)[:, None]
         d = np.arange(24)[None, :]
 
-        return np.exp(
-            -2j * np.pi * r * d / 24
-        )
+        return np.exp(-2j * np.pi * r * d / 24)
 
     # ------------------------------------------------------------
     # Cross spectra
     # ------------------------------------------------------------
 
-    def _compute_cross_spectra(
-        self,
-        Sigma,
-    ):
-        """
-        Compute every cross-spectral matrix.
+    def _compute_cross_spectra(self, Sigma):
+        return np.einsum("rd,dij->rij", self._fourier, Sigma, optimize=True)
 
-        Parameters
-        ----------
-        Sigma : (24,K,K)
-
-        Returns
-        -------
-        S : (13,K,K)
-        """
-        return np.einsum(
-            "rd,dij->rij",
-            self._fourier,
-            Sigma,
-            optimize=True,
-        )
-
-    def _process_cross_spectra(
-        self,
-        spectra,
-    ):
-        """
-        Hook for subclasses.
-
-        The default implementation leaves the spectra unchanged.
-        """
+    def _process_cross_spectra(self, spectra):
         return spectra
 
     def bootstrap_statistics(self):
-
         return {
             "spectral_eigenvalues": self.eigenvalues_,
             "spectral_eigenvectors": self.eigenvectors_,
-            "cross_spectra": self.shrunk_spectra_,
+            "cross_spectra": self.shrunk_spectra_
         }
-
-    # ------------------------------------------------------------
 
     @property
     def fitted(self):
@@ -180,41 +81,19 @@ class SpectralModel:
     # ------------------------------------------------------------
 
     def transform(self, dataset: CircadianDataset):
-
         self._check_fitted()
 
         subjects = [
-            self.estimate_subject(subject)
-            for subject in dataset.subjects
+            self.estimate_subject(subject) for subject in dataset.subjects
         ]
 
         return SpectralDataset(
             subjects=subjects,
             eigenvalues=self.eigenvalues_,
-            eigenvectors=self.eigenvectors_,
+            eigenvectors=self.eigenvectors_
         )
 
-    def estimate_subject(
-        self,
-        subject,
-        observed_hours=None,
-    ):
-        """
-        Estimate one subject's coordinated circadian representation.
-
-        Parameters
-        ----------
-        subject : CircadianSubject
-
-        observed_hours : array-like or None
-            Optional subset of hour indices to use for fitting.
-            If None, all observed hours are used.
-
-        Returns
-        -------
-        SpectralSubject
-        """
-
+    def estimate_subject(self, subject, observed_hours=None):
         self._check_fitted()
 
         if observed_hours is None:
@@ -226,14 +105,8 @@ class SpectralModel:
             hours = subject.hours[observed_hours].astype(float)
             centered = subject.centered[observed_hours]
 
-        coefficients = self._estimate_coefficients(
-            hours,
-            centered,
-        )
-
-        rotated = self._rotate_coefficients(
-            coefficients,
-        )
+        coefficients = self._estimate_coefficients(hours, centered)
+        rotated = self._rotate_coefficients(coefficients)
 
         return SpectralSubject(
             subject_id=subject.subject_id,
@@ -241,13 +114,10 @@ class SpectralModel:
             offsets=subject.offsets.copy(),
             centered=centered.copy(),
             coefficients=coefficients,
-            rotated_coefficients=rotated,
+            rotated_coefficients=rotated
         )
 
-    # ------------------------------------------------------------
-
     def fit_transform(self, dataset):
-
         self.fit(dataset)
 
         return self.transform(dataset)
@@ -256,67 +126,34 @@ class SpectralModel:
     # Subject harmonic regression
     # ------------------------------------------------------------
 
-    def _estimate_coefficients(
-        self,
-        hours,
-        centered,
-    ):
-
-        return self.estimator.fit(
-            self.fourier,
-            hours,
-            centered,
-        )
+    def _estimate_coefficients(self, hours, centered):
+        return self.estimator.fit(self.fourier, hours, centered)
 
     def reconstruct_subject(
-        self,
-        subject,
-        prediction_hours=None,
-        rotated=False,
+        self, subject, prediction_hours=None, rotated=False
     ):
-        """
-        Reconstruct centered trajectories.
-        """
-
         if prediction_hours is None:
             prediction_hours = np.arange(24)
 
         coef = (
-            subject.rotated_coefficients
-            if rotated
-            else subject.coefficients
+            subject.rotated_coefficients if rotated else subject.coefficients
         )
 
-        return self.fourier.predict(
-            prediction_hours,
-            coef,
-        )
+        return self.fourier.predict(prediction_hours, coef)
 
     # ------------------------------------------------------------
     # Rotation
     # ------------------------------------------------------------
 
-    def _rotate_coefficients(
-        self,
-        coefficients,
-    ):
-        """
-        Rotate every harmonic into the coordinated-rhythm basis.
-        """
-
+    def _rotate_coefficients(self, coefficients):
         rotated = np.empty_like(coefficients)
 
         for r, U in enumerate(self.eigenvectors_):
-
             i = 2 * r
-
             rotated[i] = coefficients[i] @ U
-
             rotated[i + 1] = coefficients[i + 1] @ U
 
         return rotated
-
-    # ------------------------------------------------------------
 
     @property
     def coordinated_components(self):
@@ -331,7 +168,7 @@ class SpectralModel:
     def get_params(self):
         return {
             "shrinkage": self.shrinkage,
-            "weighting": self.weighting,
+            "weighting": self.weight,
         }
 
     def set_params(self, **params):

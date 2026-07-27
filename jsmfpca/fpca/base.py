@@ -1,7 +1,5 @@
 from __future__ import annotations
-
 from dataclasses import dataclass
-
 import numpy as np
 from scipy.linalg import svd
 
@@ -18,13 +16,6 @@ except ImportError:
 
 @dataclass(slots=True)
 class SVDResult:
-    """
-    Result of a weighted SVD.
-
-    This object stores only the learned FPCA basis.
-    Subject scores are computed separately by `project()`.
-    """
-
     mean: np.ndarray
     basis: np.ndarray
     eigenvalues: np.ndarray
@@ -45,10 +36,6 @@ class SVDResult:
 # =============================================================================
 
 def _normalize_basis(phi: np.ndarray, weights: np.ndarray):
-    """
-    Normalize eigenfunctions under the weighted L2 inner product.
-    """
-
     norms = np.sqrt(np.sum(phi**2 * weights, axis=1, keepdims=True))
     norms[norms == 0] = 1.0
 
@@ -56,13 +43,6 @@ def _normalize_basis(phi: np.ndarray, weights: np.ndarray):
 
 
 def _align_signs(phi: np.ndarray):
-    """
-    Deterministic sign convention.
-
-    The largest absolute loading of every eigenfunction
-    is forced to be positive.
-    """
-
     phi = phi.copy()
 
     for k in range(phi.shape[0]):
@@ -79,40 +59,9 @@ def _align_signs(phi: np.ndarray):
 # =============================================================================
 
 def weighted_svd(
-    X: np.ndarray,
-    weights: np.ndarray,
-    n_components: int | None = None,
-    randomized: bool = False,
-    random_state: int | None = None,
+    X, weights, n_components=None, randomized=False, random_state=None
 ):
-    """
-    Weighted thin SVD.
-
-    Parameters
-    ----------
-    X (n_samples, n_scales)
-        Raw (uncentered) curves.
-
-    weights
-        Quadrature weights.
-
-    n_components
-        Number of retained components.
-        If None, compute all.
-
-    randomized
-        Use randomized SVD.
-
-    random_state
-        Random seed.
-
-    Returns
-    -------
-    SVDResult
-    """
-
     X = np.asarray(X, dtype=float)
-
     weights = np.asarray(weights, dtype=float)
 
     if X.ndim != 2:
@@ -122,16 +71,12 @@ def weighted_svd(
         raise ValueError("weights must be one-dimensional.")
 
     if X.shape[1] != len(weights):
-        raise ValueError(
-            "weights length must equal number of columns."
-        )
+        raise ValueError("weights length must equal number of columns.")
 
     mean = X.mean(axis=0)
     Xc = X - mean
     sqrt_w = np.sqrt(weights)
     Xw = Xc * sqrt_w
-
-    # ------------------------------------------------------------------
 
     if randomized:
         if not HAS_RANDOMIZED_SVD:
@@ -141,18 +86,13 @@ def weighted_svd(
             raise ValueError("randomized SVD requires n_components.")
 
         U, S, Vt = randomized_svd(
-            Xw,
-            n_components=n_components,
-            random_state=random_state,
+            Xw, n_components=n_components, random_state=random_state
         )
 
     else:
 
         U, S, Vt = svd(
-            Xw,
-            full_matrices=False,
-            overwrite_a=False,
-            check_finite=True,
+            Xw, full_matrices=False, overwrite_a=False, check_finite=True
         )
 
         if n_components is not None:
@@ -170,11 +110,8 @@ def weighted_svd(
     eigenvalues = S**2 / (len(X) - 1)
 
     return SVDResult(
-        mean=mean,
-        basis=phi,
-        eigenvalues=eigenvalues,
-        singular_values=S,
-        weights=weights,
+        mean=mean, basis=phi, eigenvalues=eigenvalues,
+        singular_values=S, weights=weights
     )
 
 
@@ -183,20 +120,6 @@ def weighted_svd(
 # =============================================================================
 
 def project_scores(curves, mean, basis, weights):
-    """
-    Project one or more curves onto the weighted FPCA basis.
-
-    Parameters
-    ----------
-    curves
-        Shape (n_scales,) or (n_samples, n_scales)
-
-    Returns
-    -------
-    scores
-        Shape (K,) or (n_samples, K)
-    """
-
     curves = np.asarray(curves)
     single_curve = curves.ndim == 1
 
@@ -217,10 +140,6 @@ def project_scores(curves, mean, basis, weights):
 # =============================================================================
 
 def reconstruct_curves(scores, mean, basis):
-    """
-    Reconstruct one or more curves.
-    """
-
     scores = np.asarray(scores)
     single = scores.ndim == 1
 
@@ -240,18 +159,10 @@ def reconstruct_curves(scores, mean, basis):
 # =============================================================================
 
 def explained_variance_ratio(eigenvalues: np.ndarray):
-    """
-    Fraction of variance explained.
-    """
-
     return eigenvalues / eigenvalues.sum()
 
 
 def cumulative_variance(eigenvalues: np.ndarray):
-    """
-    Cumulative explained variance.
-    """
-
     return np.cumsum(explained_variance_ratio(eigenvalues))
 
 
@@ -260,10 +171,6 @@ def cumulative_variance(eigenvalues: np.ndarray):
 # =============================================================================
 
 def reconstruction_error(X: np.ndarray, reconstructed: np.ndarray):
-    """
-    Mean squared reconstruction error.
-    """
-
     return np.mean((X - reconstructed) ** 2)
 
 
@@ -272,14 +179,6 @@ def reconstruction_error(X: np.ndarray, reconstructed: np.ndarray):
 # =============================================================================
 
 def check_orthogonality(basis, weights, atol=1e-8):
-    """
-    Verify weighted orthonormality.
-
-    Returns
-    -------
-    bool
-    """
-
     G = basis @ np.diag(weights) @ basis.T
 
     return np.allclose(G, np.eye(len(G)), atol=atol)

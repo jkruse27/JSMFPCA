@@ -1,9 +1,7 @@
 from __future__ import annotations
-
 from dataclasses import dataclass, field
 from typing import List, Optional
 from copy import deepcopy
-
 import numpy as np
 
 
@@ -21,9 +19,7 @@ class BaseEstimator:
         return vars(self).copy()
 
     def set_params(self, **params):
-
         for key, value in params.items():
-
             setattr(self, key, value)
 
         return self
@@ -31,22 +27,6 @@ class BaseEstimator:
 
 @dataclass(slots=True)
 class Observation:
-    """
-    A single observed curve.
-
-    Parameters
-    ----------
-    subject_id
-        Subject identifier.
-
-    hour
-        Hour-of-day (0-23).
-
-    curve
-        Nonlinear HRV curve evaluated over the scale axis.
-        Shape = (n_scales,)
-    """
-
     subject_id: str
     hour: int
     curve: np.ndarray
@@ -67,28 +47,6 @@ class Observation:
 
 @dataclass
 class SubjectCurves:
-    """
-    Curves observed for one subject.
-
-    Parameters
-    ----------
-    subject_id
-
-    hours
-        Array of observed hours.
-
-    curves
-        Array of observed curves.
-
-        Shape
-        -----
-        (n_observed_hours,
-         n_scales)
-
-    metadata
-        Optional subject-level information.
-    """
-
     subject_id: str
     hours: np.ndarray
     curves: np.ndarray
@@ -159,19 +117,6 @@ class SubjectCurves:
 
 @dataclass
 class ScoreMatrix:
-    """
-    FPCA scores for one subject.
-
-    Shape
-    -----
-
-    scores
-
-        (n_observed_hours,
-         n_components)
-
-    """
-
     subject_id: str
     hours: np.ndarray
     scores: np.ndarray
@@ -196,21 +141,10 @@ class ScoreMatrix:
 # =============================================================================
 
 class JSMFPCAData:
-    """
-    Collection of SubjectCurves.
-
-    Provides convenient access methods used throughout the pipeline.
-    """
-
-    # -------------------------------------------------------------------------
-
     def __init__(self, subjects: List[SubjectCurves], scales: np.ndarray):
-
         self.subjects = list(subjects)
         self.scales = np.asarray(scales, dtype=float)
         self._validate()
-
-    # -------------------------------------------------------------------------
 
     def _validate(self):
         if len(self.subjects) == 0:
@@ -225,78 +159,29 @@ class JSMFPCAData:
         if len(self.scales) != n_scales:
             raise ValueError("Scale vector has incompatible length.")
 
-    # -------------------------------------------------------------------------
-
     @property
     def n_subjects(self):
         return len(self.subjects)
-
-    # -------------------------------------------------------------------------
 
     @property
     def n_scales(self):
         return len(self.scales)
 
-    # -------------------------------------------------------------------------
-
     @property
     def subject_ids(self):
         return [s.subject_id for s in self.subjects]
 
-    # -------------------------------------------------------------------------
-
     def stack_curves(self):
-        """
-        Stack every observed curve.
-
-        Returns
-        -------
-        ndarray
-
-            Shape
-
-            (total_observations,
-             n_scales)
-        """
-
         return np.vstack([s.curves for s in self.subjects])
-
-    # -------------------------------------------------------------------------
 
     def stack_hours(self):
         return np.concatenate([s.hours for s in self.subjects])
 
-    # -------------------------------------------------------------------------
-
     def iter_observations(self):
-
-        """
-        Iterate over every observed curve.
-        """
-
         for subject in self.subjects:
             yield from subject.observations()
 
-    # -------------------------------------------------------------------------
-
     def observed_pairs(self, lag):
-        """
-        Iterate over all valid pairs separated by a circular lag.
-
-        Parameters
-        ----------
-        lag : int
-
-            Circular lag in hours.
-
-        Yields
-        ------
-        subject_id
-        hour
-        curve(h)
-        curve(h+lag)
-        """
-
         lag %= 24
 
         for subject in self.subjects:
@@ -306,10 +191,7 @@ class JSMFPCAData:
                 h2 = (h + lag) % 24
 
                 if h2 in hour_map:
-
                     yield (subject.subject_id, h, hour_map[h], hour_map[h2])
-
-    # -------------------------------------------------------------------------
 
     def subject(self, subject_id):
         for subject in self.subjects:
@@ -317,8 +199,6 @@ class JSMFPCAData:
                 return subject
 
         raise KeyError(subject_id)
-
-    # -------------------------------------------------------------------------
 
     def subset(self, indices):
         return self.__class__([self.subjects[i] for i in indices])
@@ -339,22 +219,13 @@ class JSMFPCAData:
 class SubjectScores:
     subject_id: str
     hours: np.ndarray
-    scores: np.ndarray        # ξ(h,k)
+    scores: np.ndarray
     offsets: Optional[np.ndarray] = None
     harmonic_coeffs: Optional[np.ndarray] = None
 
 
 @dataclass
 class ScoreDataset:
-    """
-    Collection of SubjectScores.
-
-    Parameters
-    ----------
-    subjects : list[SubjectScores]
-        FPCA scores for all subjects.
-    """
-
     subjects: List[SubjectScores]
 
     def __post_init__(self):
@@ -365,9 +236,7 @@ class ScoreDataset:
 
         for s in self.subjects:
             if s.n_components != n_components:
-                raise ValueError(
-                    "All subjects must have the same number of components."
-                )
+                raise ValueError("Subjects must have the same # of c")
 
         self._n_components = n_components
 
@@ -405,38 +274,22 @@ class ScoreDataset:
     # ------------------------------------------------------------------
 
     def iter_observations(self):
-        """
-        Yield (subject_id, hour, score_vector).
-        """
         for subject in self.subjects:
             for h, score in zip(subject.hours, subject.scores):
                 yield subject.subject_id, int(h), score
 
     def iter_component(self, k):
-        """
-        Yield (subject_id, hour, score) for one FPCA component.
-        """
         for subject in self.subjects:
             for h, score in zip(subject.hours, subject.scores[:, k]):
                 yield subject.subject_id, int(h), float(score)
 
     def iter_hour(self, hour):
-        """
-        Yield (subject_id, score_vector) for one hour.
-        """
         for subject in self.subjects:
             idx = np.where(subject.hours == hour)[0]
             if len(idx):
                 yield subject.subject_id, subject.scores[idx[0]]
 
     def observed_pairs(self, lag):
-        """
-        Yield score-vector pairs separated by a circular lag.
-
-        Returns
-        -------
-        subject_id, hour, score(h), score(h+lag)
-        """
         lag %= 24
 
         for subject in self.subjects:
@@ -449,10 +302,8 @@ class ScoreDataset:
                 h2 = (int(h) + lag) % 24
                 if h2 in score_map:
                     yield (
-                        subject.subject_id,
-                        int(h),
-                        score_map[int(h)],
-                        score_map[h2],
+                        subject.subject_id, int(h),
+                        score_map[int(h)], score_map[h2]
                     )
 
     # ------------------------------------------------------------------
@@ -460,25 +311,12 @@ class ScoreDataset:
     # ------------------------------------------------------------------
 
     def stack_scores(self):
-        """
-        Stack all score vectors.
-
-        Returns
-        -------
-        ndarray, shape (n_observations, n_components)
-        """
         return np.vstack([s.scores for s in self.subjects])
 
     def stack_hours(self):
-        """
-        Stack all observed hours.
-        """
         return np.concatenate([s.hours for s in self.subjects])
 
     def stack_subject_ids(self):
-        """
-        Subject ID for every observation.
-        """
         ids = []
         for s in self.subjects:
             ids.extend([s.subject_id] * s.n_hours)

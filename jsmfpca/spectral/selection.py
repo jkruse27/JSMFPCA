@@ -1,17 +1,4 @@
-"""
-Cross-validation based model selection for Stage 2.
-
-The selector jointly chooses
-
-- shrinkage intensity
-- number of harmonics
-- coordinated components retained at each harmonic
-
-using reconstruction error.
-"""
-
 from __future__ import annotations
-
 from dataclasses import dataclass
 from itertools import product
 
@@ -25,81 +12,40 @@ class SpectralSelectionResult:
 
 
 class SpectralSelector:
-
-    def __init__(
-        self,
-        shrinkage_grid,
-        harmonic_grid,
-        component_grid,
-        scoring,
-    ):
+    def __init__(self, shrinkage_grid, harmonic_grid, component_grid, scoring):
         self.shrinkage_grid = tuple(shrinkage_grid)
         self.harmonic_grid = tuple(harmonic_grid)
         self.component_grid = tuple(component_grid)
         self.scoring = scoring
 
-    # ----------------------------------------------------------
-
-    def fit(
-        self,
-        estimator,
-        train_dataset,
-        validation_dataset,
-    ):
-
+    def fit(self, estimator, train_dataset, validation_dataset):
         best = None
 
         for alpha in self.shrinkage_grid:
-
             for n_harmonics in self.harmonic_grid:
-
-                component_options = self._component_options(
-                    n_harmonics
-                )
+                component_options = self._component_options(n_harmonics)
 
                 for components in component_options:
-
                     model = estimator.clone()
-
                     model.set_params(
                         shrinkage=alpha,
                         n_harmonics=n_harmonics,
-                        n_components=components,
+                        n_components=components
                     )
 
                     model.fit(train_dataset)
+                    prediction = model.transform(validation_dataset)
+                    error = self.scoring(validation_dataset, prediction)
 
-                    prediction = model.transform(
-                        validation_dataset
-                    )
-
-                    error = self.scoring(
-                        validation_dataset,
-                        prediction,
-                    )
-
-                    if (
-                        best is None
-                        or error < best.error
-                    ):
-
+                    if best is None or error < best.error:
                         best = SpectralSelectionResult(
                             shrinkage=alpha,
                             n_harmonics=n_harmonics,
                             n_components=components,
-                            error=error,
+                            error=error
                         )
 
         return best
 
-    # ----------------------------------------------------------
-
-    def _component_options(
-        self,
-        n_harmonics,
-    ):
-
-        return product(
-            self.component_grid,
-            repeat=n_harmonics,
-        )
+    def _component_options(self, n_harmonics):
+        return product(self.component_grid, repeat=n_harmonics)
