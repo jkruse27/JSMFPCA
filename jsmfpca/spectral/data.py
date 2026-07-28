@@ -98,3 +98,12 @@ class SpectralDataset:
 
     def stack_phases(self):
         return np.stack([s.phases for s in self.subjects])
+
+    def reconstruction_error(self, observed):
+        error = 0.0
+
+        for pred_subj, obs_subj in zip(self.subjects, observed.subjects):
+            diff = pred_subj.coefficients - obs_subj.scores
+            error += np.sum(diff ** 2)
+
+        return error

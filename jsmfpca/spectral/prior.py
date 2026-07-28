@@ -110,14 +110,20 @@ class PriorBuilder:
     def build(self, model):
         components = []
 
-        for harmonic, spectrum in enumerate(model.spectra, start=1):
-            keep = model.n_components[harmonic - 1]
+        for harmonic, (evals, evecs) in enumerate(
+            zip(model.eigenvalues_, model.eigenvectors_), start=1
+        ):
+            if isinstance(model.n_components, int):
+                keep = model.n_components
+            else:
+                idx = min(harmonic - 1, len(model.n_components) - 1)
+                keep = model.n_components[idx]
 
             components.append(
                 HarmonicComponent(
                     harmonic=harmonic,
-                    eigenvectors=spectrum.eigenvectors[:, :keep],
-                    eigenvalues=spectrum.eigenvalues[:keep]
+                    eigenvectors=evecs[:, :keep],
+                    eigenvalues=evals[:keep]
                 )
             )
 

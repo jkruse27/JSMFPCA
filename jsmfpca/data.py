@@ -177,6 +177,12 @@ class JSMFPCAData:
     def stack_hours(self):
         return np.concatenate([s.hours for s in self.subjects])
 
+    def stack_subject_ids(self):
+        ids = []
+        for s in self.subjects:
+            ids.extend([s.subject_id] * s.n_hours)
+        return np.asarray(ids)
+
     def iter_observations(self):
         for subject in self.subjects:
             yield from subject.observations()
@@ -226,6 +232,10 @@ class SubjectScores:
     @property
     def n_components(self):
         return self.scores.shape[1]
+
+    @property
+    def n_hours(self):
+        return len(self.hours)
 
 
 @dataclass

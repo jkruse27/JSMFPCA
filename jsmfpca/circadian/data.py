@@ -1,5 +1,5 @@
 from __future__ import annotations
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List
 import numpy as np
 
@@ -17,6 +17,8 @@ class CircadianSubject:
     offsets: np.ndarray
     residuals: np.ndarray
     centered: np.ndarray
+    _hour_index: dict = field(init=False, repr=False)
+    _lag_pairs: dict = field(init=False, repr=False)
 
     @property
     def n_hours(self):

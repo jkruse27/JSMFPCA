@@ -49,7 +49,7 @@ class JSMFPCA(FunctionalEstimator):
         self.circadian.fit(scores)
         circadian_scores = self.circadian.transform(scores)
 
-        selection = self.selector.select(
+        selection = self.selector.fit(
             estimator=self.spectral, dataset=circadian_scores
         )
 

@@ -1,4 +1,5 @@
 from __future__ import annotations
+import copy
 from dataclasses import dataclass
 from itertools import product
 
@@ -18,7 +19,7 @@ class SpectralSelector:
         self.component_grid = tuple(component_grid)
         self.scoring = scoring
 
-    def fit(self, estimator, train_dataset, validation_dataset):
+    def fit(self, estimator, dataset):
         best = None
 
         for alpha in self.shrinkage_grid:
@@ -26,16 +27,16 @@ class SpectralSelector:
                 component_options = self._component_options(n_harmonics)
 
                 for components in component_options:
-                    model = estimator.clone()
+                    model = copy.deepcopy(estimator)
                     model.set_params(
                         shrinkage=alpha,
                         n_harmonics=n_harmonics,
                         n_components=components
                     )
 
-                    model.fit(train_dataset)
-                    prediction = model.transform(validation_dataset)
-                    error = self.scoring(validation_dataset, prediction)
+                    model.fit(dataset)
+                    prediction = model.transform(dataset)
+                    error = self.scoring(dataset, prediction)
 
                     if best is None or error < best.error:
                         best = SpectralSelectionResult(

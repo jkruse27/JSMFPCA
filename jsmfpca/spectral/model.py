@@ -9,13 +9,18 @@ from .data import SpectralDataset, SpectralSubject
 
 
 class SpectralModel:
-    def __init__(self, shrinkage=0.25, weighting="subject", estimator=None):
+    def __init__(
+        self, shrinkage=0.25, n_harmonics="cv", n_components=None,
+        weighting="subject", estimator=None
+    ):
         self.estimator = estimator or OLSCoefficientEstimator()
         self.shrinkage = shrinkage
+        self.n_harmonics = n_harmonics
+        self.n_components = n_components
         self.weight = weighting
         self._is_fitted = False
         self._fourier = self._build_fourier_matrix()
-        self.fourier_basis = FourierBasis(period=24)
+        self.fourier_basis = FourierBasis(period=24.0, n_harmonics=12)
 
     # ------------------------------------------------------------
     # Public API
@@ -29,8 +34,24 @@ class SpectralModel:
         self.eigenvalues_, self.eigenvectors_ = decompose_all(
                                                         self.shrunk_spectra_
                                                     )
-        self._is_fitted = True
+        self.basis_ = self.eigenvectors_
+        noise_variances = []
+        for i, evals in enumerate(self.eigenvalues_):
+            if isinstance(self.n_components, int):
+                keep = self.n_components
+            else:
+                idx = min(i, len(self.n_components) - 1)
+                keep = self.n_components[idx]
 
+            discarded = evals[keep:]
+            if len(discarded) > 0 and np.sum(discarded) > 0:
+                noise = np.mean(discarded)
+            else:
+                noise = 1e-6
+            noise_variances.append(noise)
+
+        self.noise_covariance_ = np.array(noise_variances)
+        self._is_fitted = True
         return self
 
     def _check_fitted(self):
@@ -68,15 +89,6 @@ class SpectralModel:
     @property
     def fitted(self):
         return self._is_fitted
-
-    @property
-    def n_harmonics(self):
-        return 13
-
-    @property
-    def n_components(self):
-        self._check_fitted()
-        return self.n_components_
 
     # ------------------------------------------------------------
     # Harmonic coefficient estimation
@@ -149,11 +161,19 @@ class SpectralModel:
 
     def _rotate_coefficients(self, coefficients):
         rotated = np.empty_like(coefficients)
+        start_idx = 1 if len(coefficients) % 2 != 0 else 0
+
+        if start_idx == 1:
+            rotated[0] = coefficients[0]
 
         for r, U in enumerate(self.eigenvectors_):
-            i = 2 * r
-            rotated[i] = coefficients[i] @ U
-            rotated[i + 1] = coefficients[i + 1] @ U
+            i = start_idx + 2 * r
+
+            if i + 1 >= len(coefficients):
+                break
+
+            rotated[i] = (coefficients[i] @ U).real
+            rotated[i + 1] = (coefficients[i + 1] @ U).real
 
         return rotated
 

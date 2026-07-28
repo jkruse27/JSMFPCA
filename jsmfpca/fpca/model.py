@@ -11,13 +11,18 @@ from .base import (
 
 class ShapeFPCA:
     def __init__(
-        self, n_components=None, selection="fixed", max_components=20,
-        n_splits=5, randomized=False, random_state=None
+            self, n_components=None, selection="fixed", max_components=20,
+            n_splits=5, randomized=False, random_state=None, cv=None
     ):
-        self.n_components = n_components
-        self.selection = selection
+        if n_components == "cv":
+            self.n_components = None
+            self.selection = "cv"
+        else:
+            self.n_components = n_components
+            self.selection = selection
+
         self.max_components = max_components
-        self.n_splits = n_splits
+        self.n_splits = cv if cv is not None else n_splits
         self.randomized = randomized
         self.random_state = random_state
         self._is_fitted = False
