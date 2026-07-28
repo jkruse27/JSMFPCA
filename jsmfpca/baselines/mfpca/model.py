@@ -1,7 +1,7 @@
 from __future__ import annotations
 import numpy as np
 from scipy.linalg import eigh
-from jsmfpca.utils import nearest_psd, sort_eigensystem
+from ...utils import nearest_psd, sort_eigensystem
 from .data import MFPCAResult
 
 

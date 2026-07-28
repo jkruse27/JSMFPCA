@@ -33,6 +33,22 @@ class SpectralSubject:
     def phases(self):
         return np.arctan2(-self.rotated_sine, self.rotated_cosine)
 
+    @classmethod
+    def from_posterior(cls, posterior, subject, model):
+        n_modes = model.n_components_
+        n_basis = posterior.mean.shape[0] // n_modes
+        coefficients = posterior.mean.reshape(n_basis, n_modes, order="F")
+        rotated = model._rotate_coefficients(coefficients)
+
+        return cls(
+            subject_id=subject.subject_id,
+            hours=subject.hours,
+            offsets=subject.offsets,
+            centered=subject.centered,
+            coefficients=coefficients,
+            rotated_coefficients=rotated
+        )
+
 
 # ---------------------------------------------------------------------
 # Complete dataset

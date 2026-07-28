@@ -2,16 +2,16 @@ from __future__ import annotations
 from dataclasses import dataclass
 import numpy as np
 from ..gaussian import GaussianBLUP
-from .basis import HarmonicBasis
+from .fourier import FourierBasis
 from .model import SpectralModel
 from .operator import ObservationOperator
 from .prior import PriorBuilder
-from .subject import SpectralSubject
+from .data import SpectralSubject
 
 
 @dataclass(slots=True)
 class SpectralInference:
-    basis: HarmonicBasis
+    basis: FourierBasis
     model: SpectralModel
     operator: ObservationOperator
     prior_builder: PriorBuilder

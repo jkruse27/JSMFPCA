@@ -1,9 +1,11 @@
 *.swp
 *.keras
 */__pycache__*
+*__pycache__*
 */bootstrap*
 */models*
 *checkpoints*
 *Zone.Identifier*
 *myenv*
 *.csv
+*egg-info*

@@ -1,9 +1,9 @@
 from __future__ import annotations
 from dataclasses import dataclass
 import numpy as np
-from jsmfpca.base import FunctionalEstimator
-from jsmfpca.data import CurveDataset
-from jsmfpca.fingerprint import FingerprintBuilder
+from ..base import FunctionalEstimator
+from ...data import JSMFPCAData
+from ...fingerprint import FingerprintBuilder
 from .model import TraditionalMFPCA
 from .scores import estimate_scores
 from .data import MFPCAResult, ScoreDataset
@@ -32,7 +32,7 @@ class TraditionalMFPCAPipeline(FunctionalEstimator):
         self.fingerprint_build = fingerprint_builder or FingerprintBuilder({})
         self.result_: TraditionalMFPCAResult | None = None
 
-    def fit(self, dataset: CurveDataset):
+    def fit(self, dataset: JSMFPCAData):
         tensor, subject_ids = self._dataset_to_tensor(dataset)
 
         self.model.fit(tensor)
@@ -47,7 +47,7 @@ class TraditionalMFPCAPipeline(FunctionalEstimator):
 
         return self
 
-    def transform(self, dataset: CurveDataset):
+    def transform(self, dataset: JSMFPCAData):
         if self.result_ is None:
             raise RuntimeError("Estimator has not been fitted.")
 
@@ -63,7 +63,7 @@ class TraditionalMFPCAPipeline(FunctionalEstimator):
 
         return self.result_.fingerprints
 
-    def reconstruct(self, dataset: CurveDataset):
+    def reconstruct(self, dataset: JSMFPCAData):
         if self.result_ is None:
             raise RuntimeError("Estimator has not been fitted.")
 
@@ -94,7 +94,7 @@ class TraditionalMFPCAPipeline(FunctionalEstimator):
         return reconstructed
 
     @staticmethod
-    def _dataset_to_tensor(dataset: CurveDataset):
+    def _dataset_to_tensor(dataset: JSMFPCAData):
         n_subjects = dataset.n_subjects
         n_visits = dataset.n_visits
         n_time = dataset.n_timepoints

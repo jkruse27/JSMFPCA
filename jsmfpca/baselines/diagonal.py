@@ -1,9 +1,8 @@
 from __future__ import annotations
 from dataclasses import dataclass
-from jsmfpca.pipeline import JSMFPCA, JSMFPCAResult
-from jsmfpca.spectral.model import SpectralModel
-from jsmfpca.spectral.shrinkage import shrink_all
-from jsmfpca.spectral.decomposition import decompose_all
+from ..pipeline import JSMFPCA, JSMFPCAResult
+from ..spectral.model import SpectralModel
+from ..spectral.shrinkage import shrink_all, decompose_all
 import numpy as np
 
 

@@ -99,6 +99,25 @@ class ShapeFPCA:
 
         return ScoreDataset(subjects)
 
+    def project_scores(self, data: JSMFPCAData):
+        self._check_fitted()
+        subjects = []
+
+        for subject in data.subjects:
+            scores = project_scores(
+                subject.curves, self.mean_, self.basis_, self.weights_
+            )
+
+            subjects.append(
+                SubjectScores(
+                    subject_id=subject.subject_id,
+                    hours=subject.hours.copy(),
+                    scores=scores
+                )
+            )
+
+        return ScoreDataset(subjects)
+
     def fit_transform(self, data):
         self.fit(data)
 

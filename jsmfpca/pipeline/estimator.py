@@ -1,8 +1,8 @@
 from __future__ import annotations
 from ..base import FunctionalEstimator
-from ..data import CurveDataset
+from ..data import JSMFPCAData
 from ..fingerprint import FingerprintBuilder
-from ..stage0.model import ShapeFPCA
+from ..fpca.model import ShapeFPCA
 from ..circadian.model import CircadianModel
 from ..spectral.model import SpectralModel
 from ..spectral.selection import SpectralSelector
@@ -42,7 +42,7 @@ class JSMFPCA(FunctionalEstimator):
         self.fingerprint_build = fingerprint_builder or FingerprintBuilder({})
         self.result_: JSMFPCAResult | None = None
 
-    def fit(self, dataset: CurveDataset):
+    def fit(self, dataset: JSMFPCAData):
         self.fpca.fit(dataset)
         scores = self.fpca.project_scores(dataset)
 

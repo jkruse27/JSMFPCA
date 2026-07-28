@@ -5,12 +5,8 @@ RUN apt-get update && \
     python3-dev \
     build-essential
 
-COPY requirements.txt requirements.txt
-
 RUN apt-get update && \
-    apt -y install cm-super
-
-RUN apt-get install -y poppler-utils
+    apt -y install cm-super poppler-utils
 
 RUN DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get -y install tzdata
 
@@ -36,8 +32,17 @@ RUN python3 -m venv $VIRTUAL_ENV
 
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
+# Set the working directory before copying files
+WORKDIR /workspace
+
+# Copy the requirements file and your local package folder
+COPY --chown=user:user requirements.txt .
+COPY --chown=user:user jsmfpca/ ./jsmfpca/
+
+# Install the requirements first
 RUN pip3 install --no-cache-dir -r requirements.txt
 
-WORKDIR /workspace
+# Compile and install the local jsmfpca folder in editable mode
+RUN pip3 install -e ./jsmfpca/
 
 CMD ["/bin/bash"]

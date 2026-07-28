@@ -1,11 +1,11 @@
 from __future__ import annotations
 from dataclasses import dataclass
-from jsmfpca.base import FunctionalEstimator
-from jsmfpca.data import CurveDataset
-from jsmfpca.stage0.model import ShapeFPCA
-from jsmfpca.circadian.model import CircadianModel
-from jsmfpca.spectral.model import SpectralModel
-from jsmfpca.fingerprint import FingerprintBuilder
+from ..base import FunctionalEstimator
+from ..data import JSMFPCAData
+from ..fpca.model import ShapeFPCA
+from ..circadian.model import CircadianModel
+from ..spectral.model import SpectralModel
+from ..fingerprint import FingerprintBuilder
 
 
 # ---------------------------------------------------------------------
@@ -56,7 +56,7 @@ class OLSHarmonicPipeline(FunctionalEstimator):
         self.fingerprint_build = fingerprint_builder or FingerprintBuilder({})
         self.result_: OLSHarmonicResult | None = None
 
-    def fit(self, dataset: CurveDataset):
+    def fit(self, dataset: JSMFPCAData):
         self.fpca.fit(dataset)
         scores = self.fpca.project_scores(dataset)
 
@@ -79,7 +79,7 @@ class OLSHarmonicPipeline(FunctionalEstimator):
 
         return self
 
-    def transform(self, dataset: CurveDataset):
+    def transform(self, dataset: JSMFPCAData):
         scores = self.fpca.project_scores(dataset)
         circadian_scores = self.circadian.transform(scores)
         subjects = self.spectral.transform(circadian_scores)

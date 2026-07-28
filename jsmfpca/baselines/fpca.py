@@ -1,9 +1,9 @@
 from __future__ import annotations
 from dataclasses import dataclass
 import numpy as np
-from ..data import CurveDataset
+from ..data import JSMFPCAData
 from ..fingerprint import FingerprintBuilder
-from ..stage0.model import ShapeFPCA
+from ..fpca.model import ShapeFPCA
 from .base import BaselineEstimator
 
 
@@ -21,7 +21,7 @@ class FPCA(BaselineEstimator):
         self.fingerprint_build = fingerprint_builder or FingerprintBuilder({})
         self.result_: FPCAResult | None = None
 
-    def fit(self, dataset: CurveDataset):
+    def fit(self, dataset: JSMFPCAData):
         self.fpca.fit(dataset)
         scores = self.fpca.project_scores(dataset)
         subjects = self._subject_scores(scores)
@@ -30,17 +30,17 @@ class FPCA(BaselineEstimator):
 
         return self
 
-    def predict_scores(self, dataset: CurveDataset):
+    def predict_scores(self, dataset: JSMFPCAData):
         scores = self.result_.fpca.project_scores(dataset)
 
         return self._subject_scores(scores)
 
-    def transform(self, dataset: CurveDataset):
+    def transform(self, dataset: JSMFPCAData):
         subjects = self.predict_scores(dataset)
 
         return self.fingerprint_build.transform_dataset(subjects)
 
-    def reconstruct(self, dataset: CurveDataset):
+    def reconstruct(self, dataset: JSMFPCAData):
         scores = self.result_.fpca.project_scores(dataset)
 
         return self.result_.fpca.reconstruct_curves(scores)

@@ -1,7 +1,8 @@
 from __future__ import annotations
 import numpy as np
-from circadian.data import CircadianDataset
+from ..circadian.data import CircadianDataset
 from .covariance import estimate_lag_covariance
+from .fourier import FourierBasis
 from .shrinkage import shrink_all, decompose_all
 from .coefficient_estimator import OLSCoefficientEstimator
 from .data import SpectralDataset, SpectralSubject
@@ -14,6 +15,7 @@ class SpectralModel:
         self.weight = weighting
         self._is_fitted = False
         self._fourier = self._build_fourier_matrix()
+        self.fourier_basis = FourierBasis(period=24)
 
     # ------------------------------------------------------------
     # Public API
@@ -127,7 +129,7 @@ class SpectralModel:
     # ------------------------------------------------------------
 
     def _estimate_coefficients(self, hours, centered):
-        return self.estimator.fit(self.fourier, hours, centered)
+        return self.estimator.fit(self.fourier_basis, hours, centered)
 
     def reconstruct_subject(
         self, subject, prediction_hours=None, rotated=False
@@ -139,7 +141,7 @@ class SpectralModel:
             subject.rotated_coefficients if rotated else subject.coefficients
         )
 
-        return self.fourier.predict(prediction_hours, coef)
+        return self.fourier_basis.predict(prediction_hours, coef)
 
     # ------------------------------------------------------------
     # Rotation

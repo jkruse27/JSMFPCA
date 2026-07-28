@@ -1,26 +1,26 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from ..base import FunctionalEstimator
-from ..data import CurveDataset
+from ..data import JSMFPCAData
 
 
 class BaselineEstimator(FunctionalEstimator, ABC):
     @abstractmethod
-    def fit(self, dataset: CurveDataset):
+    def fit(self, dataset: JSMFPCAData):
         ...
 
     @abstractmethod
-    def predict_scores(self, dataset: CurveDataset):
+    def predict_scores(self, dataset: JSMFPCAData):
         ...
 
     @abstractmethod
-    def reconstruct(self, dataset: CurveDataset):
+    def reconstruct(self, dataset: JSMFPCAData):
         ...
 
-    def transform(self, dataset: CurveDataset):
+    def transform(self, dataset: JSMFPCAData):
         return self.predict_scores(dataset)
 
-    def fit_transform(self, dataset: CurveDataset):
+    def fit_transform(self, dataset: JSMFPCAData):
         self.fit(dataset)
         return self.transform(dataset)
 
