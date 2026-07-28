@@ -16,7 +16,7 @@ class BaseEstimator:
         return deepcopy(self)
 
     def get_params(self):
-        return vars(self).copy()
+        return {slot: getattr(self, slot) for slot in self.__slots__}
 
     def set_params(self, **params):
         for key, value in params.items():
@@ -201,7 +201,7 @@ class JSMFPCAData:
         raise KeyError(subject_id)
 
     def subset(self, indices):
-        return self.__class__([self.subjects[i] for i in indices])
+        return self.__class__([self.subjects[i] for i in indices], self.scales)
 
     def summary(self):
         print("JSMFPCA Dataset")
@@ -222,6 +222,10 @@ class SubjectScores:
     scores: np.ndarray
     offsets: Optional[np.ndarray] = None
     harmonic_coeffs: Optional[np.ndarray] = None
+
+    @property
+    def n_components(self):
+        return self.scores.shape[1]
 
 
 @dataclass

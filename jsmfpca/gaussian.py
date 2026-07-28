@@ -19,12 +19,13 @@ class GaussianBLUP:
     def estimate(self, H, y, prior_covariance, noise_covariance):
         Sigma_b = np.asarray(prior_covariance)
         Sigma_e = np.asarray(noise_covariance)
+        Identity = np.eye(Sigma_b.shape[0])
+        inv_prior = np.linalg.solve(Sigma_b + self.ridge * Identity, Identity)
         Identity = np.eye(Sigma_e.shape[0])
-
-        inv_prior = np.linalg.solve(Sigma_b + self.ridge, Identity)
-        inv_noise = np.linalg.solve(Sigma_e + self.ridge, Identity)
+        inv_noise = np.linalg.solve(Sigma_e + self.ridge * Identity, Identity)
 
         posterior_precision = inv_prior + H.T @ inv_noise @ H
+        Identity = np.eye(posterior_precision.shape[0])
         posterior_covariance = np.linalg.solve(posterior_precision, Identity)
         posterior_mean = posterior_covariance @ H.T @ inv_noise @ y
 

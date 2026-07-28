@@ -2,7 +2,7 @@ from __future__ import annotations
 import numpy as np
 from .harmonic import fit_harmonic, predict_harmonic
 from .data import CircadianSubject, CircadianDataset
-from data import ScoreDataset
+from ..data import ScoreDataset
 
 
 class CircadianModel:

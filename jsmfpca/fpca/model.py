@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 from sklearn.model_selection import GroupKFold
 from data import JSMFPCAData, SubjectScores, ScoreDataset
-from utils import trapezoidal_weights
+from ..utils import trapezoidal_weights
 from .base import (
     weighted_svd, project_scores, reconstruct_curves, explained_variance_ratio
 )
@@ -115,8 +115,6 @@ class ShapeFPCA:
         )
 
         return curves
-
-    # ------------------------------------------------------------------
 
     def reconstruction_error(self, data):
         transformed = self.transform(data)
