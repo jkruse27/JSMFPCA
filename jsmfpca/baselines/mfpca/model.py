@@ -51,8 +51,8 @@ class TraditionalMFPCA:
         self.model_ = MFPCAResult(
             mean=mu,
             visit_mean=eta,
-            phi=vecs_b[:, :nb].T,
-            psi=vecs_w[:, :nw].T,
+            phi=vecs_b[:, :nb],
+            psi=vecs_w[:, :nw],
             lambda_phi=vals_b[:nb],
             lambda_psi=vals_w[:nw],
             explained_between=(vals_b / vals_b.sum())[:nb],

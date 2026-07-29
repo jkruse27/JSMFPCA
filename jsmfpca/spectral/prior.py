@@ -25,12 +25,12 @@ class HarmonicComponent:
     @property
     def covariance(self):
         diag = np.diag(self.eigenvalues)
-        return self.eigenvectors @ diag @ self.eigenvectors.T
+        return np.real(self.eigenvectors @ diag @ self.eigenvectors.conj().T)
 
     @property
     def precision(self):
         diag = np.diag(1.0 / self.eigenvalues)
-        return self.eigenvectors @ diag @ self.eigenvectors.T
+        return np.real(self.eigenvectors @ diag @ self.eigenvectors.conj().T)
 
 
 # ---------------------------------------------------------------------

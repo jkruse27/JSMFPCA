@@ -60,18 +60,22 @@ def accuracy(y_true, y_pred):
 
 
 def precision(y_true, y_pred):
-    return precision_score(y_true, y_pred, zero_division=0)
+    return precision_score(y_true, y_pred, average="weighted", zero_division=0)
 
 
 def recall(y_true, y_pred):
-    return recall_score(y_true, y_pred, zero_division=0)
+    return recall_score(y_true, y_pred, average="weighted", zero_division=0)
 
 
 def f1(y_true, y_pred):
-    return f1_score(y_true, y_pred, zero_division=0)
+    return f1_score(y_true, y_pred, average="weighted", zero_division=0)
 
 
 def auc(y_true, scores):
+    if scores.ndim == 2 and scores.shape[1] > 2:
+        return roc_auc_score(
+            y_true, scores, multi_class="ovr", average="weighted"
+        )
     return roc_auc_score(y_true, scores)
 
 

@@ -100,10 +100,15 @@ class SpectralDataset:
         return np.stack([s.phases for s in self.subjects])
 
     def reconstruction_error(self, observed):
+        from .fourier import FourierBasis
+        basis = FourierBasis(period=24.0, n_harmonics=self.n_harmonics)
         error = 0.0
 
         for pred_subj, obs_subj in zip(self.subjects, observed.subjects):
-            diff = pred_subj.coefficients - obs_subj.scores
+            reconstructed = basis.predict(
+                obs_subj.hours, pred_subj.coefficients
+            )
+            diff = reconstructed - obs_subj.centered
             error += np.sum(diff ** 2)
 
         return error

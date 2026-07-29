@@ -2,7 +2,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import numpy as np
 from ..data import JSMFPCAData
-from ..fingerprint import FingerprintBuilder
+from ..fingerprint import Fingerprint
 from ..fpca.model import ShapeFPCA
 from .base import BaselineEstimator
 
@@ -13,19 +13,34 @@ class FPCAResult:
     fingerprints: list
 
 
+class FPCAFingerprintBuilder:
+    def transform(self, subject):
+        vector = subject.scores[0]
+        return Fingerprint(
+            subject_id=subject.subject_id,
+            vector=np.asarray(vector),
+            feature_names=[f"fpca_mode_{k+1}" for k in range(len(vector))]
+        )
+
+    def transform_dataset(self, subjects):
+        return [self.transform(subject) for subject in subjects]
+
+
 class FPCA(BaselineEstimator):
     def __init__(
         self, n_components="cv", cv=None, fpca=None, fingerprint_builder=None
     ):
         self.fpca = fpca or ShapeFPCA(n_components=n_components, cv=cv)
-        self.fingerprint_build = fingerprint_builder or FingerprintBuilder({})
+        self.fingerprint_build = (
+            fingerprint_builder or FPCAFingerprintBuilder()
+        )
         self.result_: FPCAResult | None = None
 
     def fit(self, dataset: JSMFPCAData):
         self.fpca.fit(dataset)
         scores = self.fpca.project_scores(dataset)
         subjects = self._subject_scores(scores)
-        fingerprints = self.fingerprint_builder.transform_dataset(subjects)
+        fingerprints = self.fingerprint_build.transform_dataset(subjects)
         self.result_ = FPCAResult(fpca=self.fpca, fingerprints=fingerprints)
 
         return self
@@ -42,18 +57,19 @@ class FPCA(BaselineEstimator):
 
     def reconstruct(self, dataset: JSMFPCAData):
         scores = self.result_.fpca.project_scores(dataset)
-
-        return self.result_.fpca.reconstruct_curves(scores)
+        return [self.result_.fpca.reconstruct_subject(subject)
+                for subject in scores.subjects]
 
     @staticmethod
     def _subject_scores(score_dataset):
-        subjects = []
+        from ..data import SubjectScores
 
+        subjects = []
         for subject in score_dataset.subjects:
             mean_scores = np.mean(subject.scores, axis=0)
-
-            subjects.append(subject.copy_with(
-                scores=mean_scores[None], hours=np.array([0])
+            subjects.append(SubjectScores(
+                subject_id=subject.subject_id,
+                scores=mean_scores[None],
+                hours=np.array([0])
             ))
-
         return subjects

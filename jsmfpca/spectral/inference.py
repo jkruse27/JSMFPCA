@@ -19,18 +19,22 @@ class SpectralInference:
 
     def estimate_subject(self, subject, noise_covariance):
         prior = self.prior_builder.build(self.model)
-
         H = self.operator.build(
             hours=subject.hours, basis=self.basis, model=self.model
         )
-
         y = self.operator.response_vector(
             subject=subject, model=self.model
         )
 
+        if np.asarray(noise_covariance).size > 0:
+            noise_scalar = np.mean(noise_covariance)
+        else:
+            noise_scalar = 1e-6
+        R = noise_scalar * np.eye(len(y))
+
         posterior = self.blup.estimate(
             H=H, y=y, prior_covariance=prior.covariance(),
-            noise_covariance=noise_covariance
+            noise_covariance=R
         )
 
         return SpectralSubject.from_posterior(
@@ -40,7 +44,7 @@ class SpectralInference:
     def estimate_dataset(self, dataset, noise_covariance):
         return [
             self.estimate_subject(subject, noise_covariance)
-            for subject in dataset.subject_scores()
+            for subject in dataset.subjects
         ]
 
     def reconstruct_subject(self, subject, hours=None):

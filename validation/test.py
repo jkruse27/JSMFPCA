@@ -18,6 +18,7 @@ from jsmfpca.pipeline.estimator import JSMFPCA  # noqa: E402
 from jsmfpca.baselines.mfpca.pipeline import (  # noqa: E402
     TraditionalMFPCAPipeline
 )
+from jsmfpca.baselines.ols import OLSHarmonicPipeline  # noqa: E402
 from jsmfpca.baselines.diagonal import DiagonalSpectralPipeline  # noqa: E402
 from jsmfpca.baselines.fpca import FPCA  # noqa: E402
 from jsmfpca.benchmark.benchmark import Benchmark  # noqa: E402
@@ -136,7 +137,8 @@ def run_benchmarks():
             DiagonalSpectralPipeline(
                 n_modes="cv", n_harmonics=2, shrinkage="cv"
             ),
-            FPCA(n_components="cv")
+            FPCA(n_components="cv"),
+            OLSHarmonicPipeline(n_modes="cv", n_harmonics=2, shrinkage="cv")
         ]
 
         # Run Benchmark Framework

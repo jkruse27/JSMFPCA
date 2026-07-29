@@ -62,7 +62,7 @@ class JSMFPCA(FunctionalEstimator):
         self.spectral.fit(circadian_scores)
         prior = self.prior_builder.build(self.spectral)
         inference = SpectralInference(
-            basis=self.spectral.basis_, model=self.spectral,
+            basis=self.spectral.fourier_basis, model=self.spectral,
             operator=self.operator, prior_builder=self.prior_builder,
             blup=self.blup
         )
@@ -111,9 +111,32 @@ class JSMFPCA(FunctionalEstimator):
         return self.result_.fingerprints
 
     def reconstruct(self, dataset):
-        subjects = self.predict_scores(dataset)
+        self._check_fitted()
+        scores = self.result_.model.shape.project_scores(dataset)
+        circadian_scores = self.result_.model.circadian.transform(scores)
+        spectral_subjects = self.result_.model.inference.estimate_dataset(
+            circadian_scores,
+            noise_covariance=self.result_.model.spectral.noise_covariance_
+        )
 
-        return [subject.reconstruct() for subject in subjects]
+        reconstructed_curves = []
+        for circ_subj, spec_subj in zip(
+            circadian_scores.subjects, spectral_subjects
+        ):
+            reconstructed_centered = (
+                self.result_.model.spectral.reconstruct_subject(
+                    spec_subj, prediction_hours=circ_subj.hours
+                )
+            )
+
+            subject_scores = (
+                circ_subj.fitted + spec_subj.offsets + reconstructed_centered
+            )
+
+            curves = self.result_.model.shape.inverse_transform(subject_scores)
+            reconstructed_curves.append(curves)
+
+        return reconstructed_curves
 
     @staticmethod
     def reconstruction_error(observed, predicted):

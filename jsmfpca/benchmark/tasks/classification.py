@@ -45,7 +45,9 @@ class ClassificationTask(BenchmarkTask):
         }
 
         if self.probability and hasattr(clf, "predict_proba"):
-            scores = clf.predict_proba(X_test)[:, 1]
+            scores = clf.predict_proba(X_test)
+            if scores.shape[1] == 2:
+                scores = scores[:, 1]
             metrics["auc"] = auc(y_test, scores)
             artifacts["scores"] = scores
 

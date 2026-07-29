@@ -2,7 +2,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from ..pipeline import JSMFPCA, JSMFPCAResult
 from ..spectral.model import SpectralModel
-from ..spectral.shrinkage import shrink_all, decompose_all
 import numpy as np
 
 
@@ -11,20 +10,11 @@ import numpy as np
 # ---------------------------------------------------------------------
 
 class DiagonalSpectralModel(SpectralModel):
-    def fit(self, dataset):
-        self.n_components_ = dataset.n_components
-        self.Sigma_ = self._estimate_covariance(dataset)
-        self.cross_spectra_ = (self._compute_cross_spectra(self.Sigma_))
-        self.shrunk_spectra_ = shrink_all(self.cross_spectra_, self.shrinkage)
-        self.shrunk_spectra_ = [
-            self._diagonalize(S) for S in self.shrunk_spectra_
-        ]
-        self.eigenvalues_, self.eigenvectors_ = decompose_all(
-                                                        self.shrunk_spectra_
-                                                    )
-        self._is_fitted = True
-
-        return self
+    def _process_cross_spectra(self, spectra):
+        out = spectra.copy()
+        for r in range(out.shape[0]):
+            out[r] = np.diag(np.real(np.diag(out[r])))
+        return out
 
     @staticmethod
     def _diagonalize(S):

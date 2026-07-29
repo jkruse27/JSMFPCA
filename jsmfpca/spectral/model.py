@@ -30,6 +30,7 @@ class SpectralModel:
         self.n_components_ = dataset.n_components
         self.Sigma_ = estimate_lag_covariance(dataset, weighting=self.weight)
         self.cross_spectra_ = self._compute_cross_spectra(self.Sigma_)
+        self.cross_spectra_ = self._process_cross_spectra(self.cross_spectra_)
         self.shrunk_spectra_ = shrink_all(self.cross_spectra_, self.shrinkage)
         self.eigenvalues_, self.eigenvectors_ = decompose_all(
                                                         self.shrunk_spectra_
@@ -74,7 +75,13 @@ class SpectralModel:
     # ------------------------------------------------------------
 
     def _compute_cross_spectra(self, Sigma):
-        return np.einsum("rd,dij->rij", self._fourier, Sigma, optimize=True)
+        n_harm = self.n_harmonics if isinstance(self.n_harmonics, int) else 12
+        self.fourier_basis.n_harmonics = n_harm
+        all_spectra = np.einsum(
+            "rd,dij->rij", self._fourier, Sigma, optimize=True
+        )
+
+        return all_spectra[1: n_harm + 1]
 
     def _process_cross_spectra(self, spectra):
         return spectra

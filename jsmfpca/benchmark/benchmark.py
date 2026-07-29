@@ -1,5 +1,6 @@
 from __future__ import annotations
 from time import perf_counter
+import numpy as np
 from sklearn.model_selection import KFold
 from .results import BenchmarkResult
 from .task import BenchmarkTask
@@ -102,14 +103,17 @@ class Benchmark:
 
     def _splits(self, dataset):
         if self.cv is None:
+            dataset.subject_indices = np.arange(dataset.n_subjects)
             yield dataset, dataset
             return
 
         kfold = KFold(
             n_splits=self.cv, shuffle=True, random_state=self.random_state
         )
-
         for train_idx, test_idx in kfold.split(dataset.subjects):
             train = dataset.subset(train_idx)
             test = dataset.subset(test_idx)
+            train.subject_indices = train_idx
+            test.subject_indices = test_idx
+
             yield train, test
