@@ -1,7 +1,7 @@
 from __future__ import annotations
 import numpy as np
 import pytest
-from jsmfpca.data import CurveDataset, CurveSubject
+from jsmfpca.data import JSMFPCAData, SubjectCurves
 
 
 # ---------------------------------------------------------------------
@@ -50,14 +50,14 @@ def _generate_dataset(rng, hours, scales, n_subjects=20, noise=0.0):
             curves.append(curve)
 
         subjects.append(
-            CurveSubject(
+            SubjectCurves(
                 subject_id=subject_id,
                 hours=hours.copy(),
                 curves=np.asarray(curves)
             )
         )
 
-    return CurveDataset(subjects=subjects, scales=scales)
+    return JSMFPCAData(subjects=subjects, scales=scales)
 
 
 # ---------------------------------------------------------------------

@@ -61,17 +61,38 @@ class SpectralPrior:
     def n_basis(self):
         return 2 * self.n_harmonics
 
+    def _align_prior(self, raw_matrix):
+        H_harm = self.n_harmonics
+        K_modes = self.n_modes
+
+        if H_harm == 0 or K_modes == 0:
+            return raw_matrix
+
+        dim = 2 * H_harm * K_modes
+        P = np.zeros((dim, dim))
+
+        for r in range(H_harm):
+            for part in (0, 1):
+                for k in range(K_modes):
+                    prior_idx = r * (2 * K_modes) + part * K_modes + k
+                    h_idx = k * (2 * H_harm) + 2 * r + part
+                    P[h_idx, prior_idx] = 1.0
+
+        return P @ raw_matrix @ P.T
+
     def covariance(self):
         blocks = []
         for component in self.components:
             blocks.append(component.covariance)
-        return self._block_diag(blocks)
+        raw_cov = self._block_diag(blocks)
+        return self._align_prior(raw_cov)
 
     def precision(self):
         blocks = []
         for component in self.components:
             blocks.append(component.precision)
-        return self._block_diag(blocks)
+        raw_prec = self._block_diag(blocks)
+        return self._align_prior(raw_prec)
 
     def variances(self):
         return {

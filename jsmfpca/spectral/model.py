@@ -48,7 +48,7 @@ class SpectralModel:
             if len(discarded) > 0 and np.sum(discarded) > 0:
                 noise = np.mean(discarded)
             else:
-                noise = 1e-6
+                noise = max(np.sum(evals) * 0.05, 1e-6)
             noise_variances.append(noise)
 
         self.noise_covariance_ = np.array(noise_variances)

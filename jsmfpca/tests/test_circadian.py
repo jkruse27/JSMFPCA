@@ -1,6 +1,6 @@
 from __future__ import annotations
 import numpy as np
-from jsmfpca.stage0.model import ShapeFPCA
+from jsmfpca.fpca.model import ShapeFPCA
 from jsmfpca.circadian.model import CircadianModel
 
 

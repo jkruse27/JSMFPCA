@@ -2,9 +2,9 @@ from __future__ import annotations
 import numpy as np
 import pytest
 from jsmfpca.pipeline import JSMFPCA
-from jsmfpca.baselines.mfpca import TraditionalMFPCA
+from jsmfpca.baselines.mfpca.pipeline import TraditionalMFPCAPipeline
 from jsmfpca.baselines.diagonal import DiagonalSpectralPipeline
-from jsmfpca.baselines.cosinor import CosinorPipeline
+from jsmfpca.baselines.cosinor import CosinorModel
 
 
 # ---------------------------------------------------------------------
@@ -13,9 +13,9 @@ from jsmfpca.baselines.cosinor import CosinorPipeline
 
 BASELINES = [
     JSMFPCA,
-    TraditionalMFPCA,
+    TraditionalMFPCAPipeline,
     DiagonalSpectralPipeline,
-    CosinorPipeline,
+    CosinorModel,
 ]
 
 

@@ -208,7 +208,7 @@ This provides:
 
 ```text
 jsmfpca/
-├── stage0/
+├── fpca/
 │   └── ShapeFPCA
 ├── circadian/
 │   └── CircadianModel

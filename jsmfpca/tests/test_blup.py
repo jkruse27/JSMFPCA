@@ -1,6 +1,6 @@
 from __future__ import annotations
 import numpy as np
-from jsmfpca.spectral.blup import GaussianBLUP
+from jsmfpca.gaussian import GaussianBLUP
 from jsmfpca.spectral.prior import HarmonicComponent, SpectralPrior
 
 
