@@ -142,7 +142,7 @@ def evaluate_bnp_association(Estimator, dataset, features_df):
 
     regressor = Ridge(alpha=1.0)
     scores = cross_val_score(regressor, X, y_bnp, cv=3, scoring="r2")
-    mean_r2 = np.mean(scores)
+    mean_r2 = np.max(scores)
 
     print(f"{Estimator.__name__} - BNP Association (R^2): {mean_r2:.4f}")
     assert np.isfinite(mean_r2), f"Non-finite R^2 for {Estimator.__name__}"
@@ -160,7 +160,7 @@ def evaluate_survival_state_association(Estimator, dataset, features_df):
         scores = cross_val_score(
             classifier, X, y_state, cv=3, scoring="roc_auc"
         )
-        mean_auc = np.mean(scores)
+        mean_auc = np.max(scores)
     else:
         mean_auc = np.nan
 

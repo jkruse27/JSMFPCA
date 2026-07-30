@@ -169,18 +169,22 @@ class SpectralModel:
     def _rotate_coefficients(self, coefficients):
         rotated = np.empty_like(coefficients)
         start_idx = 1 if len(coefficients) % 2 != 0 else 0
-
         if start_idx == 1:
             rotated[0] = coefficients[0]
 
         for r, U in enumerate(self.eigenvectors_):
             i = start_idx + 2 * r
-
             if i + 1 >= len(coefficients):
                 break
 
-            rotated[i] = (coefficients[i] @ U).real
-            rotated[i + 1] = (coefficients[i + 1] @ U).real
+            a = coefficients[i]
+            b = coefficients[i + 1]
+
+            U_R = U.real
+            U_I = U.imag
+
+            rotated[i] = a @ U_R - b @ U_I
+            rotated[i + 1] = a @ U_I + b @ U_R
 
         return rotated
 

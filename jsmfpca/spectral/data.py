@@ -33,6 +33,14 @@ class SpectralSubject:
     def phases(self):
         return np.arctan2(-self.rotated_sine, self.rotated_cosine)
 
+    @property
+    def rotated_cosine(self):
+        return self.rotated_coefficients[0::2]
+
+    @property
+    def rotated_sine(self):
+        return self.rotated_coefficients[1::2]
+
     @classmethod
     def from_posterior(cls, posterior, subject, model):
         n_modes = model.n_components_

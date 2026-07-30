@@ -25,12 +25,18 @@ class HarmonicComponent:
     @property
     def covariance(self):
         diag = np.diag(self.eigenvalues)
-        return np.real(self.eigenvectors @ diag @ self.eigenvectors.conj().T)
+        S = self.eigenvectors @ diag @ self.eigenvectors.conj().T
+        A = np.real(S)
+        B = np.imag(S)
+        return np.block([[A, -B], [B, A]])
 
     @property
     def precision(self):
         diag = np.diag(1.0 / self.eigenvalues)
-        return np.real(self.eigenvectors @ diag @ self.eigenvectors.conj().T)
+        S_inv = self.eigenvectors @ diag @ self.eigenvectors.conj().T
+        A = np.real(S_inv)
+        B = np.imag(S_inv)
+        return np.block([[A, -B], [B, A]])
 
 
 # ---------------------------------------------------------------------
@@ -57,22 +63,14 @@ class SpectralPrior:
 
     def covariance(self):
         blocks = []
-
         for component in self.components:
-            Sigma = component.covariance
-            blocks.append(Sigma)
-            blocks.append(Sigma)
-
+            blocks.append(component.covariance)
         return self._block_diag(blocks)
 
     def precision(self):
         blocks = []
-
         for component in self.components:
-            P = component.precision
-            blocks.append(P)
-            blocks.append(P)
-
+            blocks.append(component.precision)
         return self._block_diag(blocks)
 
     def variances(self):
