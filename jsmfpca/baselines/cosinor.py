@@ -33,16 +33,16 @@ class CosinorModel:
         self.n_harmonics = n_harmonics
 
     def fit_subject(self, subject):
-        coef = self._estimate_coefficients(subject.hours, subject.centered)
+        coef = self._estimate_coefficients(subject.hours, subject.curves)
         reconstruction = self.predict(subject.hours, coef)
 
         return CosinorSubject(
             subject_id=subject.subject_id,
             hours=subject.hours.copy(),
-            observed=subject.centered.copy(),
+            observed=subject.curves.copy(),
             coefficients=coef,
             reconstructed=reconstruction,
-            residuals=subject.centered - reconstruction
+            residuals=subject.curves - reconstruction
         )
 
     def fit(self, dataset):
@@ -50,9 +50,12 @@ class CosinorModel:
 
         return CosinorDataset(
             subjects=subjects,
-            n_components=dataset.n_components,
+            n_components=self.n_harmonics * 2,
             n_harmonics=self.n_harmonics,
         )
+
+    def fit_transform(self, dataset, y=None):
+        return self.fit(dataset).transform(dataset)
 
     def predict(self, hours, coefficients):
         X = self.design_matrix(hours)

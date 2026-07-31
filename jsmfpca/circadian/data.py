@@ -17,6 +17,7 @@ class CircadianSubject:
     offsets: np.ndarray
     residuals: np.ndarray
     centered: np.ndarray
+    mean: np.ndarray
     _hour_index: dict = field(init=False, repr=False)
     _lag_pairs: dict = field(init=False, repr=False)
 
@@ -28,6 +29,10 @@ class CircadianSubject:
     def n_components(self):
         return self.scores.shape[1]
 
+    @property
+    def mean(self):
+        return self.offsets
+
     def component(self, k):
         return (
             self.hours,
@@ -36,6 +41,10 @@ class CircadianSubject:
             self.residuals[:, k],
             self.centered[:, k],
         )
+
+    def copy_with(self, **kwargs):
+        import dataclasses
+        return dataclasses.replace(self, **kwargs)
 
     def __post_init__(self):
         self._hour_index = {int(h): i for i, h in enumerate(self.hours)}
@@ -86,6 +95,12 @@ class CircadianDataset:
     @property
     def subject_ids(self):
         return [s.subject_id for s in self.subjects]
+
+    @property
+    def n_hours(self):
+        if not self.subjects:
+            return 0
+        return len(self.subjects[0].hours)
 
     # -------------------------------------------------------------
 
@@ -151,6 +166,13 @@ class CircadianDataset:
                     subject.subject_id, int(subject.hours[i]),
                     subject.centered[i], subject.centered[j]
                 )
+
+    def as_array(self):
+        return np.array([subject.centered for subject in self.subjects])
+
+    def copy_with(self, **kwargs):
+        import dataclasses
+        return dataclasses.replace(self, **kwargs)
 
     # -------------------------------------------------------------
 

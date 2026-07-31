@@ -7,6 +7,8 @@ import numpy as np
 # ---------------------------------------------------------------------
 
 def estimate_lag_covariance(dataset, weighting="subject"):
+    if weighting == "observation":
+        weighting = "pair"
     K = dataset.n_components
     Sigma = np.zeros((24, K, K))
 

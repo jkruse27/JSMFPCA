@@ -104,6 +104,10 @@ class SubjectCurves:
 
         return self.curves[idx[0]]
 
+    def copy_with(self, **kwargs):
+        import dataclasses
+        return dataclasses.replace(self, **kwargs)
+
     # -------------------------------------------------------------------------
 
     def observations(self):
@@ -209,6 +213,22 @@ class JSMFPCAData:
     def subset(self, indices):
         return self.__class__([self.subjects[i] for i in indices], self.scales)
 
+    def copy_with(self, **kwargs):
+        new_subjects = kwargs.get("subjects", self.subjects)
+        new_scales = kwargs.get("scales", getattr(self, "scales", None))
+
+        return self.__class__(subjects=new_subjects, scales=new_scales)
+
+    def mean_curve(self):
+        import numpy as np
+
+        if not self.subjects:
+            raise ValueError("Empty dataset.")
+
+        all_curves = np.vstack([subject.curves for subject in self.subjects])
+
+        return np.mean(all_curves, axis=0)
+
     def summary(self):
         print("JSMFPCA Dataset")
         print("----------------")
@@ -269,6 +289,12 @@ class ScoreDataset:
     @property
     def subject_ids(self):
         return [s.subject_id for s in self.subjects]
+
+    @property
+    def n_hours(self):
+        if not self.subjects:
+            return 0
+        return len(self.subjects[0].hours)
 
     # ------------------------------------------------------------------
     # Access

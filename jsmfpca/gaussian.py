@@ -11,6 +11,10 @@ class Posterior:
     n_basis: int | None = None
     n_modes: int | None = None
 
+    @property
+    def coefficient_matrix(self):
+        return np.atleast_2d(self.mean)
+
 
 class GaussianBLUP:
     def __init__(self, ridge: float = 1e-8):

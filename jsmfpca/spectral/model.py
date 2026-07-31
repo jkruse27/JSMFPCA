@@ -38,7 +38,9 @@ class SpectralModel:
         self.basis_ = self.eigenvectors_
         noise_variances = []
         for i, evals in enumerate(self.eigenvalues_):
-            if isinstance(self.n_components, int):
+            if self.n_components is None:
+                keep = len(evals)
+            elif isinstance(self.n_components, int):
                 keep = self.n_components
             else:
                 idx = min(i, len(self.n_components) - 1)

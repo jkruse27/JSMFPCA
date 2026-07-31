@@ -120,7 +120,7 @@ def test_transform_is_deterministic(synthetic_dataset):
 
 
 def test_flat_subject_has_zero_centered():
-    from jsmfpca.data import ScoreDataset, ScoreSubject
+    from jsmfpca.data import ScoreDataset, SubjectScores
 
     n_subjects = 5
     n_hours = 24
@@ -132,7 +132,7 @@ def test_flat_subject_has_zero_centered():
         mean = np.random.randn(n_components)
         scores = np.tile(mean, (n_hours, 1))
 
-        subjects.append(ScoreSubject(
+        subjects.append(SubjectScores(
             subject_id=subject_id,
             hours=np.arange(n_hours),
             scores=scores

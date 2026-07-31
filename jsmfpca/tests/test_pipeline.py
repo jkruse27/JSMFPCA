@@ -45,7 +45,7 @@ def test_all_stages_are_fitted(synthetic_dataset):
     model = JSMFPCA()
     model.fit(synthetic_dataset)
 
-    assert model.result_.stage0.fitted
+    assert model.result_.fpca.fitted
     assert model.result_.circadian.fitted
     assert model.result_.spectral.fitted
 

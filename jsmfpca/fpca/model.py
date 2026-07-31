@@ -85,6 +85,10 @@ class ShapeFPCA:
 
         return self
 
+    @property
+    def components_(self):
+        return self.basis_
+
     def transform(self, data: JSMFPCAData):
         self._check_fitted()
         subjects = []
@@ -139,6 +143,19 @@ class ShapeFPCA:
         )
 
         return curves
+
+    def reconstruct_curves(self, scores_dataset):
+        from jsmfpca.data import JSMFPCAData
+
+        reconstructed_subjects = [
+            self.reconstruct_subject(subject_scores)
+            for subject_scores in scores_dataset.subjects
+        ]
+
+        return JSMFPCAData(
+            subjects=reconstructed_subjects,
+            scales=getattr(scores_dataset, "scales", None)
+        )
 
     def reconstruction_error(self, data):
         transformed = self.transform(data)
