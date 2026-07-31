@@ -23,6 +23,15 @@ class CosinorDataset:
     n_components: int
     n_harmonics: int
 
+    def __len__(self):
+        return len(self.subjects)
+
+    def __iter__(self):
+        return iter(self.subjects)
+
+    def __getitem__(self, idx):
+        return self.subjects[idx]
+
 
 # ---------------------------------------------------------------------
 # Model
@@ -46,13 +55,19 @@ class CosinorModel:
         )
 
     def fit(self, dataset):
-        subjects = [self.fit_subject(s) for s in dataset.subjects]
-
-        return CosinorDataset(
-            subjects=subjects,
+        self.subjects_ = [self.fit_subject(s) for s in dataset.subjects]
+        self.result_ = CosinorDataset(
+            subjects=self.subjects_,
             n_components=self.n_harmonics * 2,
             n_harmonics=self.n_harmonics,
         )
+        self._is_fitted = True
+        return self
+
+    def transform(self, dataset):
+        if not getattr(self, "_is_fitted", False):
+            raise RuntimeError("Model must be fit before calling transform.")
+        return self.result_
 
     def fit_transform(self, dataset, y=None):
         return self.fit(dataset).transform(dataset)
@@ -72,6 +87,30 @@ class CosinorModel:
             cols.append(np.sin(r * omega * hours))
 
         return np.column_stack(cols)
+
+    def reconstruct(self, dataset):
+        if not getattr(self, "_is_fitted", False):
+            raise RuntimeError("Model must be fit before calling reconstruct.")
+
+        from jsmfpca.data import JSMFPCAData, SubjectCurves
+        reconstructed_subjects = []
+
+        for subject in dataset.subjects:
+            coef = self._estimate_coefficients(subject.hours, subject.curves)
+            reconstructed_curve = self.predict(subject.hours, coef)
+            reconstructed_subjects.append(
+                SubjectCurves(
+                    subject_id=subject.subject_id,
+                    hours=subject.hours.copy(),
+                    curves=reconstructed_curve,
+                    metadata=getattr(subject, 'metadata', {})
+                )
+            )
+
+        return JSMFPCAData(
+            subjects=reconstructed_subjects,
+            scales=getattr(dataset, "scales", None)
+        )
 
     def _estimate_coefficients(self, hours, centered):
         X = self.design_matrix(hours)

@@ -60,7 +60,6 @@ class ShapeFPCA:
 
         if self.selection == "cv":
             self.n_components = self._select_n_components(data)
-
         elif self.selection != "fixed":
             raise ValueError("selection must be 'fixed' or 'cv'.")
 
@@ -77,17 +76,17 @@ class ShapeFPCA:
         self.eigenvalues_ = result.eigenvalues
         self.singular_values_ = result.singular_values
         self.explained_variance_ratio_ = explained_variance_ratio(
-                                                    self.eigenvalues_
-                                                )
+                                            self.eigenvalues_
+                                        )
         self.scales_ = data.scales.copy()
         self.selected_n_components_ = self.n_components
+        self.components_ = self.basis_
+        self.n_features_ = self.basis_.shape[1]
+        self.explained_variance_ = np.cumsum(self.explained_variance_ratio_)
+
         self._is_fitted = True
 
         return self
-
-    @property
-    def components_(self):
-        return self.basis_
 
     def transform(self, data: JSMFPCAData):
         self._check_fitted()
@@ -145,16 +144,26 @@ class ShapeFPCA:
         return curves
 
     def reconstruct_curves(self, scores_dataset):
-        from jsmfpca.data import JSMFPCAData
+        from jsmfpca.data import JSMFPCAData, SubjectCurves
 
-        reconstructed_subjects = [
-            self.reconstruct_subject(subject_scores)
-            for subject_scores in scores_dataset.subjects
-        ]
+        reconstructed_subjects = []
+        for subject_scores in scores_dataset.subjects:
+            reconstructed_curve_array = self.reconstruct_subject(
+                subject_scores
+            )
+
+            reconstructed_subjects.append(
+                SubjectCurves(
+                    subject_id=subject_scores.subject_id,
+                    hours=subject_scores.hours,
+                    curves=reconstructed_curve_array,
+                    metadata=getattr(subject_scores, 'metadata', {})
+                )
+            )
 
         return JSMFPCAData(
             subjects=reconstructed_subjects,
-            scales=getattr(scores_dataset, "scales", None)
+            scales=self.scales_
         )
 
     def reconstruction_error(self, data):
@@ -175,16 +184,8 @@ class ShapeFPCA:
         }
 
     @property
-    def n_features_(self):
-        return self.basis_.shape[1]
-
-    @property
     def fitted(self):
         return self._is_fitted
-
-    @property
-    def explained_variance_(self):
-        return np.cumsum(self.explained_variance_ratio_)
 
     def _check_fitted(self):
         if not self._is_fitted:

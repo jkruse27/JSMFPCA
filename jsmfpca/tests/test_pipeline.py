@@ -141,7 +141,7 @@ def test_result_contains_all_models(synthetic_dataset):
     model.fit(synthetic_dataset)
     result = model.result_
 
-    assert result.stage0 is not None
+    assert result.fpca is not None
     assert result.circadian is not None
     assert result.spectral is not None
     assert result.fingerprints is not None

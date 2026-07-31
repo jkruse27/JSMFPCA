@@ -121,7 +121,7 @@ def test_subject_coefficients_shape(synthetic_dataset):
     subject = transformed.subjects[0]
 
     assert subject.coefficients.shape == (
-        2 * model.n_harmonics, dataset.n_components
+        2 * model.n_harmonics_, dataset.n_components
     )
 
 

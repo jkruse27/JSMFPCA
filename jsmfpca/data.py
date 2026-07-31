@@ -175,6 +175,12 @@ class JSMFPCAData:
     def subject_ids(self):
         return [s.subject_id for s in self.subjects]
 
+    @property
+    def n_hours(self):
+        if not self.subjects:
+            return 0
+        return len(self.subjects[0].hours)
+
     def stack_curves(self):
         return np.vstack([s.curves for s in self.subjects])
 
@@ -219,9 +225,10 @@ class JSMFPCAData:
 
         return self.__class__(subjects=new_subjects, scales=new_scales)
 
-    def mean_curve(self):
-        import numpy as np
+    def as_array(self):
+        return np.array([subject.curves for subject in self.subjects])
 
+    def mean_curve(self):
         if not self.subjects:
             raise ValueError("Empty dataset.")
 
@@ -308,6 +315,9 @@ class ScoreDataset:
 
     def subset(self, indices):
         return self.__class__([self.subjects[i] for i in indices])
+
+    def as_array(self):
+        return np.array([subject.scores for subject in self.subjects])
 
     # ------------------------------------------------------------------
     # Iterators

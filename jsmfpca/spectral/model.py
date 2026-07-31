@@ -54,7 +54,12 @@ class SpectralModel:
             noise_variances.append(noise)
 
         self.noise_covariance_ = np.array(noise_variances)
+        self.n_harmonics_ = keep
         self._is_fitted = True
+
+        if isinstance(getattr(self, "n_harmonics", None), str):
+            self.n_harmonics = len(self.eigenvalues_)
+
         return self
 
     def _check_fitted(self):

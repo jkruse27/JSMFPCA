@@ -63,22 +63,23 @@ class CircadianModel:
         return fits, coeffs, curves
 
     def inverse_transform(self, dataset):
-        from jsmfpca.data import SubjectCurves, JSMFPCAData
+        from jsmfpca.data import SubjectScores
         reconstructed_subjects = []
 
         for subject in dataset.subjects:
-            reconstructed_curve = subject.centered + subject.mean
+            reconstructed_scores = (
+                subject.centered + subject.offsets + subject.fitted
+            )
 
             reconstructed_subjects.append(
-                SubjectCurves(
+                SubjectScores(
                     subject_id=subject.subject_id,
                     hours=subject.hours,
-                    curves=reconstructed_curve,
-                    metadata=getattr(subject, 'metadata', {})
+                    scores=reconstructed_scores
                 )
             )
 
-        return JSMFPCAData(subjects=reconstructed_subjects)
+        return ScoreDataset(subjects=reconstructed_subjects)
 
     # ------------------------------------------------------------------
     # Variance component estimation

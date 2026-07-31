@@ -17,7 +17,6 @@ class CircadianSubject:
     offsets: np.ndarray
     residuals: np.ndarray
     centered: np.ndarray
-    mean: np.ndarray
     _hour_index: dict = field(init=False, repr=False)
     _lag_pairs: dict = field(init=False, repr=False)
 
@@ -31,7 +30,7 @@ class CircadianSubject:
 
     @property
     def mean(self):
-        return self.offsets
+        return self.scores.mean(axis=0)
 
     def component(self, k):
         return (

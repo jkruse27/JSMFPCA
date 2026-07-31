@@ -137,7 +137,7 @@ def test_constant_centered_scores_give_zero_covariance():
 
         subjects.append(CircadianSubject(
             subject_id=subject_id, hours=np.arange(24), centered=centered,
-            mean=np.zeros(5), offsets=np.zeros(5)
+            offsets=np.zeros(5)
         ))
 
     dataset = CircadianDataset(subjects)
