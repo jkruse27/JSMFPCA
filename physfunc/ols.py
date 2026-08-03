@@ -83,6 +83,8 @@ class OLSHarmonicEstimator:
                 weight = np.exp(-2j * np.pi * r * h / 24.0)
                 S_r[r - 1] += cov_h * weight
 
+        S_r /= 24.0
+
         # Regularize and compute eigenvectors
         self.spectral_eigenvectors_ = np.zeros((R, M, M), dtype=complex)
         for r in range(R):
@@ -126,8 +128,10 @@ class OLSHarmonicEstimator:
 
                 if self.rotate:
                     U_r = self.spectral_eigenvectors_[r]
-                    proj_a = np.real(U_r.conj().T @ a_r)
-                    proj_b = np.real(U_r.conj().T @ b_r)
+                    z_r = a_r - 1j * b_r
+                    w_r = U_r.conj().T @ z_r
+                    proj_a = w_r.real
+                    proj_b = -w_r.imag
                 else:
                     proj_a, proj_b = a_r, b_r
 

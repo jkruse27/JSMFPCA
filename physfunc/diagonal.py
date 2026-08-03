@@ -67,14 +67,25 @@ class DiagonalSpectralModel:
                 weight = np.cos(2.0 * np.pi * r * h / 24.0)
                 S_diag[r - 1] += Sigma_diag[h % 24] * weight
 
-        # Regularize diagonal power spectrum
+        S_diag /= 24.0
+
+        # Regularized diagonal power spectrum
         self.diagonal_spectra_ = np.maximum(
-            (1.0 - self.shrinkage) * S_diag + self.shrinkage *
-            np.mean(S_diag, axis=1, keepdims=True), 1e-6
+            (1.0 - self.shrinkage) * S_diag + self.shrinkage
+            * np.mean(S_diag, axis=1, keepdims=True),
+            1e-6
         )
 
         self.is_fitted_ = True
         return self
+
+    def _fourier_design_matrix(self, hours: np.ndarray) -> np.ndarray:
+        omega = 2.0 * np.pi / self.period
+        cols = []
+        for r in range(1, self.n_harmonics + 1):
+            cols.append(np.cos(r * omega * hours))
+            cols.append(np.sin(r * omega * hours))
+        return np.column_stack(cols)
 
     def transform(self, dataset) -> np.ndarray:
         """Extract uncoupled circadian amplitude and phase fingerprints."""
@@ -87,19 +98,19 @@ class DiagonalSpectralModel:
             centered = scores - offsets
 
             # 1D Fourier fit per mode
-            omega = 2.0 * np.pi / self.period
+            X_design = self._fourier_design_matrix(subj.hours)
+            coef, *_ = np.linalg.lstsq(X_design, centered, rcond=None)
             feature_vec = [offsets]
 
             for m in range(self.n_modes):
-                y_m = centered[:, m]
-                for r in range(1, self.n_harmonics + 1):
-                    cos_t = np.cos(r * omega * subj.hours)
-                    sin_t = np.sin(r * omega * subj.hours)
-                    X_fourier = np.column_stack([cos_t, sin_t])
+                for r in range(self.n_harmonics):
+                    a_rm = coef[2 * r, m]
+                    b_rm = coef[2 * r + 1, m]
 
-                    a, b = np.linalg.lstsq(X_fourier, y_m, rcond=None)[0]
-                    amp = np.sqrt(a**2 + b**2)
-                    phase = np.arctan2(-b, a)
+                    # Scale amplitudes using diagonal_spectra_
+                    scale_factor = np.sqrt(self.diagonal_spectra_[r, m])
+                    amp = np.sqrt(a_rm**2 + b_rm**2) * scale_factor
+                    phase = np.arctan2(-b_rm, a_rm)
                     feature_vec.extend([amp, phase])
 
             fingerprints.append(np.hstack(feature_vec))

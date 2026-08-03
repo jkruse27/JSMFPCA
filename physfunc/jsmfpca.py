@@ -157,7 +157,7 @@ class JSMFPCA:
                 weight = np.exp(-2j * np.pi * r * h / 24.0)
                 S_r[r - 1] += cov_h * weight
 
-        return S_r
+        return S_r / 24.0
 
     def _shrink_and_decompose_spectra(self, S_r: np.ndarray):
         R, M, _ = S_r.shape
@@ -204,7 +204,7 @@ class JSMFPCA:
             A = np.real(S)
             B = np.imag(S)
 
-            cov_real_2M = np.block([[A, -B], [B, A]])
+            cov_real_2M = 0.5 * np.block([[A, -B], [B, A]])
             blocks.append(cov_real_2M)
 
         prior_cov = block_diag(*blocks)
@@ -270,8 +270,11 @@ class JSMFPCA:
                 b_r = b_fourier[2 * r + 1]
 
                 U_r = self.spectral_eigenvectors_[r]
-                proj_a = np.real(U_r.conj().T @ a_r)
-                proj_b = np.real(U_r.conj().T @ b_r)
+                z_r = a_r - 1j * b_r
+                w_r = U_r.conj().T @ z_r
+
+                proj_a = w_r.real
+                proj_b = -w_r.imag
 
                 amp = np.sqrt(proj_a**2 + proj_b**2)
                 phase = np.arctan2(-proj_b, proj_a)
@@ -293,14 +296,28 @@ class JSMFPCA:
         self._fit_shape_fpca(all_curves, weights)
 
         dataset_scores = []
+        residual_variances = []
+
         for subj in dataset.subjects:
             scores = self._project_shape_scores(subj.curves)
             offsets = np.mean(scores, axis=0)
             centered = scores - offsets
+
+            X_design = self._fourier_design_matrix(
+                subj.hours, self.n_harmonics
+            )
+            coef, *_ = np.linalg.lstsq(X_design, centered, rcond=None)
+            res = centered - X_design @ coef
+            residual_variances.append(np.mean(res**2))
+
             dataset_scores.append({
                 "hours": subj.hours,
                 "centered": centered
             })
+
+        self.noise_variance_ = (
+            np.mean(residual_variances) if residual_variances else 1e-4
+        )
 
         Sigma = self._compute_lag_covariance(dataset_scores)
         S_r = self._compute_cross_spectra(Sigma)
