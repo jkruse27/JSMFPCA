@@ -37,12 +37,12 @@ WORKDIR /workspace
 
 # Copy the requirements file and your local package folder
 COPY --chown=user:user requirements.txt .
-COPY --chown=user:user jsmfpca/ ./jsmfpca/
+COPY --chown=user:user physfunc/ ./physfunc/
 
 # Install the requirements first
 RUN pip3 install --no-cache-dir -r requirements.txt
 
 # Compile and install the local jsmfpca folder in editable mode
-RUN pip3 install -e ./jsmfpca/
+RUN pip3 install -e ./physfunc/
 
 CMD ["/bin/bash"]
