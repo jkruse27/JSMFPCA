@@ -137,9 +137,16 @@ def test_constant_centered_scores_give_zero_covariance():
 
         subjects.append(CircadianSubject(
             subject_id=subject_id, hours=np.arange(24), centered=centered,
-            offsets=np.zeros(5)
+            offsets=np.zeros(5), scores=np.zeros((24, 5)),
+            fitted=np.zeros((24, 5)), residuals=np.zeros((24, 5))
         ))
 
-    dataset = CircadianDataset(subjects)
+    dataset = CircadianDataset(
+            subjects=subjects,
+            harmonic_order=1,
+            population_coefficients=np.zeros((2, 5)),
+            population_curves=np.zeros((24, 5)),
+            residual_variances=np.zeros(5)
+        )
     Sigma = estimate_lag_covariance(dataset)
     np.testing.assert_allclose(Sigma, 0.0, atol=1e-12)

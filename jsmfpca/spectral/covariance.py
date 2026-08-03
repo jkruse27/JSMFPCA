@@ -57,6 +57,8 @@ def estimate_lag_covariance(dataset, weighting="subject"):
             if counts[lag] > 0:
                 Sigma[lag] /= counts[lag]
 
+    Sigma = (Sigma + Sigma.transpose(0, 2, 1)) / 2.0
+
     return Sigma
 
 

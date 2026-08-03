@@ -81,7 +81,8 @@ class JSMFPCA(FunctionalEstimator):
             model=JSMFPCAModel(
                 shape=self.fpca, circadian=self.circadian,
                 spectral=self.spectral, prior=prior, inference=inference
-            ), fingerprints=fingerprints,
+            ), fingerprints=fingerprints, stage0=self.fpca,
+            stage1=self.circadian, stage2=self.spectral
         )
 
         return self

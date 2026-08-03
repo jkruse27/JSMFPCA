@@ -30,7 +30,7 @@ class CircadianSubject:
 
     @property
     def mean(self):
-        return self.scores.mean(axis=0)
+        return self.offsets
 
     def component(self, k):
         return (

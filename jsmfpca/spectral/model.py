@@ -25,6 +25,15 @@ class SpectralModel:
     # ------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------
+    @property
+    def n_components(self):
+        if hasattr(self, 'eigenvectors_') and self.eigenvectors_ is not None:
+            return len(self.eigenvectors_)
+        return getattr(self, '_n_components', None)
+
+    @n_components.setter
+    def n_components(self, value):
+        self._n_components = value
 
     def fit(self, dataset: CircadianDataset):
         self.n_components_ = dataset.n_components

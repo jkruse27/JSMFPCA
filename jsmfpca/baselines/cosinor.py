@@ -16,6 +16,10 @@ class CosinorSubject:
     reconstructed: np.ndarray
     residuals: np.ndarray
 
+    @property
+    def vector(self):
+        return self.coefficients
+
 
 @dataclass(slots=True)
 class CosinorDataset:

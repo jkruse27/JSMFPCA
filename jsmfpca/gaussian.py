@@ -8,8 +8,17 @@ class Posterior:
     mean: np.ndarray
     covariance: np.ndarray
 
-    n_basis: int | None = None
-    n_modes: int | None = None
+    @property
+    def n_basis(self):
+        if self.coefficient_matrix is not None:
+            return self.coefficient_matrix.shape[0]
+        return 0
+
+    @property
+    def n_modes(self):
+        if self.coefficient_matrix is not None:
+            return self.coefficient_matrix.shape[1]
+        return 0
 
     @property
     def coefficient_matrix(self):

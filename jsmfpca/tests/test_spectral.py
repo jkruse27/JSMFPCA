@@ -165,11 +165,11 @@ def test_inverse_rotation(synthetic_dataset):
 # ---------------------------------------------------------------------
 
 def test_reconstruction_shape(synthetic_dataset):
-    _, _, model, _, transformed = _fit_spectral(synthetic_dataset)
+    _, _, model, dataset, transformed = _fit_spectral(synthetic_dataset)
     subject = transformed.subjects[0]
     reconstructed = model.reconstruct_subject(subject)
 
-    assert reconstructed.shape == (24, model.n_components)
+    assert reconstructed.shape == (24, dataset.n_components)
 
 
 # ---------------------------------------------------------------------

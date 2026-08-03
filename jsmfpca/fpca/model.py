@@ -27,6 +27,16 @@ class ShapeFPCA:
         self.random_state = random_state
         self._is_fitted = False
 
+    @property
+    def n_components(self):
+        if hasattr(self, 'components_') and self.components_ is not None:
+            return self.components_.shape[0]
+        return getattr(self, '_n_components', None)
+
+    @n_components.setter
+    def n_components(self, value):
+        self._n_components = value
+
     def _select_n_components(self, data):
         X = data.stack_curves()
         groups = data.stack_subject_ids()
@@ -80,9 +90,10 @@ class ShapeFPCA:
                                         )
         self.scales_ = data.scales.copy()
         self.selected_n_components_ = self.n_components
-        self.components_ = self.basis_
+        norms = np.linalg.norm(self.basis_, axis=1, keepdims=True)
+        self.components_ = self.basis_ / norms
         self.n_features_ = self.basis_.shape[1]
-        self.explained_variance_ = np.cumsum(self.explained_variance_ratio_)
+        self.explained_variance_ = self.eigenvalues_
 
         self._is_fitted = True
 

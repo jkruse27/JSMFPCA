@@ -34,7 +34,7 @@ def test_component_covariance_shape():
     component = _prior().components[0]
     Sigma = component.covariance
 
-    assert Sigma.shape == (component.n_modes, component.n_modes)
+    assert Sigma.shape == (2 * component.n_modes, 2 * component.n_modes)
 
 
 def test_component_precision_shape():

@@ -19,4 +19,3 @@ hrv_utils @ git+https://github.com/jkruse27/Tutorials.git@main
 arch
 pdf2image
 tslearn
-pytest

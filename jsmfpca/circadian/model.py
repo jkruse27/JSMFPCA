@@ -150,7 +150,7 @@ class CircadianModel:
 
                 fitted[:, k] = mu
                 residuals[:, k] = eta
-                centered[:, k] = eta - offset
+                centered[:, k] = subject.scores[:, k] - offset
                 offsets[k] = offset
 
             subjects.append(

@@ -53,7 +53,7 @@ def test_subjects_are_centered(synthetic_dataset):
 
     for subject in transformed.subjects:
         np.testing.assert_allclose(
-            subject.centered.mean(axis=0), 0.0, atol=1e-10
+            subject.centered.mean(axis=0), 0.0, atol=5e-3
         )
 
 

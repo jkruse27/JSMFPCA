@@ -5,6 +5,15 @@ from ...utils import nearest_psd, sort_eigensystem
 from .data import MFPCAResult
 
 
+def enforce_deterministic_signs(eigenvectors):
+    components = eigenvectors.T
+    max_abs_cols = np.argmax(np.abs(components), axis=1)
+    signs = np.sign(components[range(components.shape[0]), max_abs_cols])
+    flipped_components = components * signs[:, np.newaxis]
+
+    return flipped_components.T
+
+
 class TraditionalMFPCA:
     def __init__(self, explained_variance=0.99):
         self.explained_variance = explained_variance
@@ -40,6 +49,9 @@ class TraditionalMFPCA:
 
         vals_b, vecs_b = sort_eigensystem(*eigh(Kb))
         vals_w, vecs_w = sort_eigensystem(*eigh(Kw))
+
+        vecs_b = enforce_deterministic_signs(vecs_b)
+        vecs_w = enforce_deterministic_signs(vecs_w)
 
         nb = self._choose_components(
             vals_b / vals_b.sum(), self.explained_variance
