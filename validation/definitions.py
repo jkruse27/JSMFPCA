@@ -202,18 +202,10 @@ def get_features(window, dataset='986'):
 
 
 def load_jsmfpca_dataset(
-    window_size: int, feat: str, dataset_name: str, valid_hours=range(24)
-) -> tuple[JSMFPCAData, np.ndarray]:
-    """Load longitudinal curve dataset and stratify labels via BNP tertiles."""
-    print(f"Loading {dataset_name} - {feat} (Window: {window_size}h)...")
-
-    df_features = get_features(window_size, dataset_name)
-    if "BNP" not in df_features.columns:
-        raise ValueError(f"'BNP' column not found in dataset {dataset_name}.")
-
-    df_bnp = df_features[["BNP"]].groupby(df_features.index).first().dropna()
-    df_bnp["bnp_tertile"] = pd.qcut(
-        df_bnp["BNP"], q=3, labels=['Low', 'Medium', 'High']
+    window_size, feat, dataset_name, valid_hours=range(24)
+):
+    print(
+        f"Loading data for {dataset_name} - {feat} (Window: {window_size}h)..."
     )
 
     subject_data = {}
@@ -232,9 +224,7 @@ def load_jsmfpca_dataset(
         if scales is None:
             scales = df_curves.columns.astype(float).values
 
-        df_merged = df_curves.join(df_bnp["bnp_tertile"], how="inner")
-
-        for subj_id, row in df_merged.iterrows():
+        for subj_id, row in df_curves.iterrows():
             curve = row[df_curves.columns].values.astype(float)
 
             if np.isnan(curve).all():
@@ -242,33 +232,31 @@ def load_jsmfpca_dataset(
 
             if subj_id not in subject_data:
                 subject_data[subj_id] = {
-                    "hours": [],
-                    "curves": [],
-                    "label": row["bnp_tertile"],
+                    'hours': [],
+                    'curves': []
                 }
 
-            subject_data[subj_id]["hours"].append(hour)
-            subject_data[subj_id]["curves"].append(curve)
+            subject_data[subj_id]['hours'].append(hour)
+            subject_data[subj_id]['curves'].append(curve)
 
     subjects = []
-    labels = []
 
     for subj_id, data in subject_data.items():
-        if len(data["hours"]) < 4:
+        if len(data['hours']) < 4:
             continue
 
         subjects.append(
             SubjectCurves(
                 subject_id=str(subj_id),
-                hours=np.array(data["hours"], dtype=int),
-                curves=np.vstack(data["curves"]),
+                hours=np.array(data['hours'], dtype=int),
+                curves=np.vstack(data['curves'])
             )
         )
-        labels.append(data["label"])
 
     if not subjects:
         raise ValueError("No valid subjects found after aggregation.")
 
     print(f"  -> Successfully loaded {len(subjects)} subjects.")
+
     dataset = JSMFPCAData(subjects=subjects, scales=scales)
-    return dataset, np.array(labels)
+    return dataset

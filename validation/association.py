@@ -100,7 +100,7 @@ def evaluate_survival_association(
 
 def run_associations():
     dataset_name = "986"
-    jsmfpca_data, _ = load_jsmfpca_dataset(
+    jsmfpca_data = load_jsmfpca_dataset(
         window_size=2, feat="lmds", dataset_name=dataset_name
     )
     features_dataframe = get_features(2, dataset_name)
