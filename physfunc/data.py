@@ -135,6 +135,17 @@ class JSMFPCAData:
             return 0
         return len(self.subjects[0].hours)
 
+    @property
+    def quadrature_weights(self):
+        s = self.scales
+        w = np.empty_like(s)
+
+        w[1:-1] = (s[2:] - s[:-2]) / 2
+        w[0] = (s[1] - s[0]) / 2
+        w[-1] = (s[-1] - s[-2]) / 2
+
+        return w
+
     def stack_curves(self):
         return np.vstack([s.curves for s in self.subjects])
 

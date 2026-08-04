@@ -110,16 +110,13 @@ def run_associations():
     print("=" * 55)
 
     for EstimatorClass in ESTIMATORS:
-        try:
-            evaluate_bnp_association(
-                EstimatorClass, jsmfpca_data, features_dataframe
-            )
-            evaluate_survival_association(
-                EstimatorClass, jsmfpca_data, features_dataframe
-            )
-            print("-" * 55)
-        except Exception as e:
-            print(f" Error evaluating {EstimatorClass.__name__}: {e}")
+        evaluate_bnp_association(
+            EstimatorClass, jsmfpca_data, features_dataframe
+        )
+        evaluate_survival_association(
+            EstimatorClass, jsmfpca_data, features_dataframe
+        )
+        print("-" * 55)
 
 
 if __name__ == "__main__":

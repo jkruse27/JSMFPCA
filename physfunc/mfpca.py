@@ -35,14 +35,19 @@ class TraditionalMFPCA:
 
         # 5. Subject mean curves (Level 1) & within-subject residuals (Level 2)
         subject_means = np.nanmean(centered, axis=1)  # (N_subjects, N_time)
+        valid_subjects = ~np.isnan(subject_means).any(axis=1)
         residuals = centered - subject_means[:, None, :]
         residuals_flat = residuals.reshape(n_subjects * n_visits, n_time)
+
+        # Remove padded visits
+        valid_rows = ~np.isnan(residuals_flat).any(axis=1)
+        residuals_flat = residuals_flat[valid_rows]
 
         # 6. Level 2 (within-subject) covariance Kw
         Kw = np.cov(residuals_flat, rowvar=False)
 
         # 7. Level 1 (between-subject) covariance Kb = K_subj - (1/J) * Kw
-        K_subj = np.cov(subject_means, rowvar=False)
+        K_subj = np.cov(subject_means[valid_subjects], rowvar=False)
         J_harmonic = n_visits
         Kb_raw = K_subj - (1.0 / J_harmonic) * Kw
 
@@ -74,7 +79,10 @@ class TraditionalMFPCA:
         self._check_fitted()
         data_array = self._dataset_to_array(dataset)
         centered = data_array - self.mean_ - self.visit_mean_[None, :, :]
+
+        # Ignore padded visits
         subject_means = np.nanmean(centered, axis=1)
+        subject_means = np.nan_to_num(subject_means)
 
         # Project subject mean curves onto Level 1 eigenfunctions phi_k
         xi = subject_means @ self.phi_.T  # Shape: (N_subjects, nb)
@@ -98,6 +106,9 @@ class TraditionalMFPCA:
             subj_reconstructed = []
             for j in range(len(subj.hours)):
                 visit_idx = min(j, n_visits - 1)
+                if np.isnan(centered[i, visit_idx]).all():
+                    continue
+
                 res_ij = centered[i, visit_idx] - subject_means[i]
                 zeta_ij = res_ij @ self.psi_.T  # Level 2 scores
 

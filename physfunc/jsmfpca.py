@@ -37,6 +37,7 @@ class JSMFPCA:
     # =========================================================================
 
     def fit(self, dataset):
+        self.dataset = dataset
         if self.n_modes == "cv" or self.shrinkage == "cv":
             self._fit_with_cv(dataset)
         else:
@@ -77,31 +78,34 @@ class JSMFPCA:
     # Stage 0: Shape FPCA
     # =========================================================================
 
-    def _fit_shape_fpca(self, curves_stacked: np.ndarray, weights: np.ndarray):
-        self.mean_curve_ = np.average(curves_stacked, axis=0, weights=weights)
-        centered = curves_stacked - self.mean_curve_
+    def _fit_shape_fpca(self, all_curves):
+        self.mean_curve_ = np.mean(all_curves, axis=0)
+        centered = all_curves - self.mean_curve_
 
-        w_sqrt = np.sqrt(weights)
-        X_weighted = centered * w_sqrt[:, None]
-        cov = X_weighted.T @ X_weighted / np.sum(weights)
+        W = self.dataset.quadrature_weights.astype(float)
+        sqrtW = np.sqrt(W)
+        self.quadrature_weights_ = W
 
-        evals, evecs = eigh(cov)
-        idx = np.argsort(evals)[::-1]
-        evals = evals[idx]
-        evecs = evecs[:, idx].T
+        Xw = centered * sqrtW
+        U, S, Vt = np.linalg.svd(Xw, full_matrices=False)
+        eigenvalues = (S ** 2) / (len(all_curves) - 1)
+
+        phi = Vt / sqrtW
+        norms = np.sqrt(np.sum(np.abs(phi)**2 * W, axis=1))
+        phi /= norms[:, None]
 
         if isinstance(self.n_modes, int):
             self.n_modes_ = self.n_modes
         else:
-            explained = np.cumsum(evals) / np.sum(evals)
+            explained = np.cumsum(eigenvalues) / np.sum(eigenvalues)
             self.n_modes_ = np.searchsorted(explained, 0.95) + 1
 
-        self.shape_basis_ = evecs[: self.n_modes_]
-        self.shape_eigenvalues_ = evals[: self.n_modes_]
+        self.shape_basis_ = phi[: self.n_modes_]
+        self.shape_eigenvalues_ = eigenvalues[: self.n_modes_]
 
     def _project_shape_scores(self, curves: np.ndarray) -> np.ndarray:
         centered = curves - self.mean_curve_
-        return centered @ self.shape_basis_.T
+        return (centered * self.quadrature_weights_) @ self.shape_basis_.T
 
     # =========================================================================
     # Stage 1 & 2: Circadian Fourier Fitting & Cross-Spectral Decomposition
@@ -120,44 +124,57 @@ class JSMFPCA:
 
         return np.column_stack(cols)
 
-    def _compute_lag_covariance(
-        self, dataset_scores: list[dict]
-    ) -> np.ndarray:
+    def _compute_lag_covariance(self, dataset_scores):
         M = self.n_modes_
         Sigma = np.zeros((24, M, M), dtype=float)
-        counts = np.zeros(24, dtype=float)
+        lag_counts = np.zeros(24, dtype=float)
 
         for subj in dataset_scores:
-            hours = subj["hours"]
-            centered = subj["centered"]  # (N_obs, M)
-            n_obs = len(hours)
+            hours = np.asarray(subj["hours"], dtype=float)
+            scores = subj["centered"]
+            subject_cov = np.zeros((24, M, M), dtype=float)
+            subject_counts = np.zeros(24, dtype=float)
+            n = len(hours)
 
-            for i in range(n_obs):
-                for j in range(n_obs):
+            for i in range(n):
+                for j in range(n):
                     lag = int(round((hours[j] - hours[i]) % 24.0)) % 24
-                    Sigma[lag] += np.outer(centered[i], centered[j])
-                    counts[lag] += 1.0
+                    subject_cov[lag] += np.outer(scores[i], scores[j])
+                    subject_counts[lag] += 1
+
+            for lag in range(24):
+                if subject_counts[lag] > 0:
+                    subject_cov[lag] /= subject_counts[lag]
+                    Sigma[lag] += subject_cov[lag]
+                    lag_counts[lag] += 1
 
         for lag in range(24):
-            if counts[lag] > 0:
-                Sigma[lag] /= counts[lag]
+            if lag_counts[lag] > 0:
+                Sigma[lag] /= lag_counts[lag]
 
-        # Symmetrize ONLY lag 0
-        Sigma[0] = (Sigma[0] + Sigma[0].T) / 2.0
         return Sigma
 
-    def _compute_cross_spectra(self, Sigma: np.ndarray) -> np.ndarray:
+    def _compute_cross_spectra(self, lag_covariance):
         R = self.n_harmonics
         M = self.n_modes_
-        S_r = np.zeros((R, M, M), dtype=complex)
+        spectra = np.zeros((R, M, M), dtype=complex)
 
         for r in range(1, R + 1):
+            S = np.zeros((M, M), dtype=complex)
             for h in range(-11, 13):
-                cov_h = Sigma[h % 24] if h >= 0 else Sigma[(-h) % 24].T
-                weight = np.exp(-2j * np.pi * r * h / 24.0)
-                S_r[r - 1] += cov_h * weight
+                if h >= 0:
+                    cov = lag_covariance[h]
+                else:
+                    cov = lag_covariance[-h].T
 
-        return S_r / 24.0
+                weight = np.exp(-2j * np.pi * r * h / 24.0)
+                S += cov * weight
+
+            S /= 24.0
+            S = 0.5 * (S + S.conj().T)
+            spectra[r - 1] = S
+
+        return spectra
 
     def _shrink_and_decompose_spectra(self, S_r: np.ndarray):
         R, M, _ = S_r.shape
@@ -165,12 +182,11 @@ class JSMFPCA:
         self.spectral_eigenvalues_ = np.zeros((R, M), dtype=float)
         self.spectral_eigenvectors_ = np.zeros((R, M, M), dtype=complex)
 
-        discarded_variances = []
-
         for r in range(R):
             S = S_r[r]
             target = np.diag(np.diag(S))
             S_shrunk = (1.0 - self.shrinkage) * S + self.shrinkage * target
+            S_shrunk = 0.5 * (S_shrunk + S_shrunk.conj().T)
             self.shrunk_spectra_[r] = S_shrunk
 
             evals, evecs = eigh(S_shrunk)
@@ -181,13 +197,6 @@ class JSMFPCA:
             self.spectral_eigenvalues_[r] = evals
             self.spectral_eigenvectors_[r] = evecs
 
-            if M > 1:
-                discarded_variances.append(np.mean(evals[1:]))
-
-        self.noise_variance_ = (
-            np.mean(discarded_variances) if discarded_variances else 1e-4
-        )
-
     # =========================================================================
     # Stage 3: Real Gaussian BLUP Prior & Posterior Inference
     # =========================================================================
@@ -197,13 +206,9 @@ class JSMFPCA:
         blocks = []
 
         for r in range(R):
-            evals = self.spectral_eigenvalues_[r]
-            evecs = self.spectral_eigenvectors_[r]
-
-            S = evecs @ np.diag(evals) @ evecs.conj().T
-            A = np.real(S)
-            B = np.imag(S)
-
+            S = self.shrunk_spectra_[r]
+            A = S.real
+            B = S.imag
             cov_real_2M = 0.5 * np.block([[A, -B], [B, A]])
             blocks.append(cov_real_2M)
 
@@ -211,11 +216,9 @@ class JSMFPCA:
         return prior_cov
 
     def _predict_posteriors(self, dataset) -> list[dict]:
-        prior_cov = self._build_real_prior_covariance()
+        prior_cov = self.prior_covariance_
         dim_prior = prior_cov.shape[0]
-        inv_prior = solve(
-            prior_cov + self.ridge * np.eye(dim_prior), np.eye(dim_prior)
-        )
+        inv_prior = self.inv_prior_cov_
 
         posteriors = []
 
@@ -291,9 +294,7 @@ class JSMFPCA:
 
     def _fit_single(self, dataset):
         all_curves = np.vstack([subj.curves for subj in dataset.subjects])
-        weights = np.ones(all_curves.shape[0], dtype=float)
-
-        self._fit_shape_fpca(all_curves, weights)
+        self._fit_shape_fpca(all_curves)
 
         dataset_scores = []
         residual_variances = []
@@ -306,23 +307,36 @@ class JSMFPCA:
             X_design = self._fourier_design_matrix(
                 subj.hours, self.n_harmonics
             )
-            coef, *_ = np.linalg.lstsq(X_design, centered, rcond=None)
-            res = centered - X_design @ coef
-            residual_variances.append(np.mean(res**2))
 
-            dataset_scores.append({
-                "hours": subj.hours,
-                "centered": centered
-            })
+            coef, *_ = np.linalg.lstsq(
+                X_design, centered, rcond=None
+            )
 
-        self.noise_variance_ = (
-            np.mean(residual_variances) if residual_variances else 1e-4
-        )
+            fitted = X_design @ coef
+            residuals = centered - fitted
 
+            residual_variances.append(
+                np.var(residuals, axis=0, ddof=1)
+            )
+
+            dataset_scores.append(
+                {"hours": subj.hours, "centered": centered}
+            )
+
+        residual_variances = np.vstack(residual_variances)
+        self.mode_noise_variance_ = residual_variances.mean(axis=0)
+        self.noise_variance_ = np.mean(self.mode_noise_variance_)
         Sigma = self._compute_lag_covariance(dataset_scores)
+        self.lag_covariance_ = Sigma
         S_r = self._compute_cross_spectra(Sigma)
         self.cross_spectra_ = S_r
         self._shrink_and_decompose_spectra(S_r)
+        self.prior_covariance_ = self._build_real_prior_covariance()
+        dim_prior = self.prior_covariance_.shape[0]
+        self.inv_prior_cov_ = solve(
+            self.prior_covariance_ + self.ridge * np.eye(dim_prior),
+            np.eye(dim_prior)
+        )
 
     def _fit_with_cv(self, dataset):
         n_subjects = dataset.n_subjects
